@@ -1,12 +1,12 @@
 import { Tabs } from 'expo-router';
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { HapticTab } from '@/components/haptic-tab';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
-export default function TabLayout() {
+export default function KabbagUmumLayout() {
   const colorScheme = useColorScheme();
 
   return (
@@ -19,40 +19,38 @@ export default function TabLayout() {
         tabBarLabelStyle: styles.tabBarLabel,
       }}>
       <Tabs.Screen
-        name="buat-laporan"
-        options={{
-          title: 'Buat Laporan',
-          tabBarIcon: ({ color }) => (
-            <Ionicons name="document-text" size={26} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="manage-laporan"
-        options={{
-          title: 'Manage',
-          tabBarIcon: ({ color }) => (
-            <Ionicons name="settings" size={26} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="index"
+        name="home"
         options={{
           title: 'Home',
-          tabBarIcon: ({ color }) => (
-            <View style={styles.homeIconContainer}>
-              <Ionicons name="home" size={30} color="#fff" />
-            </View>
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'home' : 'home-outline'} size={26} color={color} />
           ),
         }}
       />
       <Tabs.Screen
-        name="riwayat"
+        name="disposisi_laporan"
         options={{
-          title: 'Riwayat',
-          tabBarIcon: ({ color }) => (
-            <Ionicons name="time" size={26} color={color} />
+          title: 'Disposisi',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'send' : 'send-outline'} size={26} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="kelola_pengguna"
+        options={{
+          title: 'Pengguna',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'people' : 'people-outline'} size={26} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="arsip"
+        options={{
+          title: 'Arsip',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'archive' : 'archive-outline'} size={26} color={color} />
           ),
         }}
       />
@@ -60,12 +58,11 @@ export default function TabLayout() {
         name="profil"
         options={{
           title: 'Profil',
-          tabBarIcon: ({ color }) => (
-            <Ionicons name="person-circle" size={26} color={color} />
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'person-circle' : 'person-circle-outline'} size={26} color={color} />
           ),
         }}
       />
-      <Tabs.Screen name="logout" options={{ href: null }} />
     </Tabs>
   );
 }
@@ -87,17 +84,5 @@ const styles = StyleSheet.create({
   },
   tabBarLabel: {
     fontSize: 12,
-  },
-  homeIconContainer: {
-    backgroundColor: '#2b2d42',
-    paddingHorizontal: 18,
-    paddingVertical: 8,
-    borderRadius: 50,
-    marginTop: -35,
-    shadowColor: '#2b2d42',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    elevation: 8,
   },
 });

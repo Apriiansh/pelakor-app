@@ -1,24 +1,46 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import 'react-native-reanimated';
+// app/_layout.tsx
+import { useFonts } from 'expo-font';
+import { Slot, SplashScreen } from 'expo-router';
+import { useEffect } from 'react';
+import { MD3LightTheme as DefaultTheme, PaperProvider } from 'react-native-paper';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import { useColorScheme } from '@/hooks/use-color-scheme';
+SplashScreen.preventAutoHideAsync();
 
-export const unstable_settings = {
-  anchor: '(tabs)',
+const theme = {
+  ...DefaultTheme,
+  fonts: {
+    ...DefaultTheme.fonts,
+    bodyLarge: { ...DefaultTheme.fonts.bodyLarge, fontFamily: 'Rubik' },
+    bodyMedium: { ...DefaultTheme.fonts.bodyMedium, fontFamily: 'Rubik' },
+    bodySmall: { ...DefaultTheme.fonts.bodySmall, fontFamily: 'Rubik' },
+    titleLarge: { ...DefaultTheme.fonts.titleLarge, fontFamily: 'RubikBold' },
+    titleMedium: { ...DefaultTheme.fonts.titleMedium, fontFamily: 'RubikBold' },
+    titleSmall: { ...DefaultTheme.fonts.titleSmall, fontFamily: 'RubikBold' },
+  },
 };
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
+  const [loaded] = useFonts({
+    Rubik: require('../assets/fonts/Rubik-Regular.ttf'),
+    RubikBold: require('../assets/fonts/Rubik-Bold.ttf'),
+  });
+
+  useEffect(() => {
+    if (loaded) {
+      SplashScreen.hideAsync();
+    }
+  }, [loaded]);
+
+  if (!loaded) {
+    return null;
+  }
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-      </Stack>
-      <StatusBar style="auto" />
-    </ThemeProvider>
+    <SafeAreaProvider>
+      <PaperProvider theme={theme}>
+        <Slot />
+      </PaperProvider>
+    </SafeAreaProvider>
   );
 }

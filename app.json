@@ -38,11 +38,19 @@
             "backgroundColor": "#000000"
           }
         }
-      ]
+      ],
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "4bc5e468-c7d9-4e0c-b2aa-5f9b3cabab56"
+      }
+    },
+    "owner": "apri27-org"
   }
 }
