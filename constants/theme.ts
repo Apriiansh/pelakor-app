@@ -1,41 +1,80 @@
-/**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
- */
-
 import { Platform } from 'react-native';
+import { MD3DarkTheme, MD3LightTheme, MD3Theme } from 'react-native-paper';
 
-const tintColorLight = '#0493d3';
-const tintColorDark = '#0493d3';
+// Extend the MD3Theme to include custom colors
+export interface CustomTheme extends MD3Theme {
+  colors: MD3Theme['colors'] & {
+    primaryDark: string;
+    primaryLight: string;
+    gradientStart: string;
+    gradientEnd: string;
+    success: string;
+    warning: string;
+    blueLight: string;
+    amberLight: string;
+    greenLight: string;
+  };
+}
 
-export const Colors = {
-  light: {
-    text: '#11181C',
-    background: '#fff',
-    tint: tintColorLight,
-    icon: '#687076',
-    tabIconDefault: '#687076',
-    tabIconSelected: tintColorLight,
+export const LightTheme: CustomTheme = {
+  ...MD3LightTheme,
+  colors: {
+    ...MD3LightTheme.colors,
+    primary: '#6366f1',
+    primaryDark: '#4f46e5',
+    primaryLight: '#a5b4fc',
+    background: '#f8fafc',
+    surface: '#ffffff',
+    onSurface: '#0f172a', // Mapped from text
+    onSurfaceVariant: '#475569', // Mapped from textSecondary
+    outlineVariant: '#64748b', // Mapped from subtle
+    secondary: '#3b82f6', // Mapped from accent
+    error: '#ef4444',
+    onError: '#ffffff',
+    outline: '#e2e8f0',
+    shadow: '#000000',
+    gradientStart: '#667eea',
+    gradientEnd: '#764ba2',
+    success: '#10b981',
+    warning: '#f59e0b',
+    blueLight: '#dbeafe',
+    amberLight: '#fef3c7',
+    greenLight: '#d1fae5',
   },
-  dark: {
-    text: '#ECEDEE',
-    background: '#151718',
-    tint: tintColorDark,
-    icon: '#9BA1A6',
-    tabIconDefault: '#9BA1A6',
-    tabIconSelected: tintColorDark,
+};
+
+export const DarkTheme: CustomTheme = {
+  ...MD3DarkTheme,
+  colors: {
+    ...MD3DarkTheme.colors,
+    primary: '#6366f1',
+    primaryDark: '#4f46e5',
+    primaryLight: '#a5b4fc',
+    background: '#1a202c',
+    surface: '#2d3748',
+    onSurface: '#e2e8f0', // Mapped from text
+    onSurfaceVariant: '#a0aec0', // Mapped from textSecondary
+    outlineVariant: '#718096', // Mapped from subtle
+    secondary: '#3b82f6', // Mapped from accent
+    error: '#ef4444',
+    onError: '#ffffff',
+    outline: '#4a5568',
+    shadow: '#000000',
+    gradientStart: '#667eea',
+    gradientEnd: '#764ba2',
+    success: '#10b981',
+    warning: '#f59e0b',
+    blueLight: '#dbeafe',
+    amberLight: '#fef3c7',
+    greenLight: '#d1fae5',
   },
 };
 
 export const Fonts = Platform.select({
   ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
     sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
     serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
     rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
     mono: 'ui-monospace',
   },
   default: {

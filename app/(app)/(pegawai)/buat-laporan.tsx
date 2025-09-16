@@ -43,8 +43,8 @@ const categories = [
 export default function BuatLaporanScreen() {
     const router = useRouter();
     const params = useLocalSearchParams();
-    const [judul, setJudul] = useState('');
-    const [deskripsi, setDeskripsi] = useState('');
+    const [judul_laporan, setJudul] = useState('');
+    const [isi_laporan, setDeskripsi] = useState('');
     const [kategori, setKategori] = useState('');
     const [lampiran, setLampiran] = useState<any>(null);
     const [loading, setLoading] = useState(false);
@@ -111,8 +111,8 @@ export default function BuatLaporanScreen() {
     const clearLampiran = () => setLampiran(null);
 
     const handleSubmit = async () => {
-        if (!judul.trim() || !deskripsi.trim()) {
-            Alert.alert('Validasi Error', 'Judul dan deskripsi wajib diisi');
+        if (!judul_laporan.trim() || !isi_laporan.trim()) {
+            Alert.alert('Validasi Error', 'Judul dan Deskripsi wajib diisi');
             return;
         }
         if (!kategori) {
@@ -130,8 +130,8 @@ export default function BuatLaporanScreen() {
             }
 
             const formData = new FormData();
-            formData.append('judul', judul.trim());
-            formData.append('deskripsi', deskripsi.trim());
+            formData.append('judul_laporan', judul_laporan.trim());
+            formData.append('isi_laporan', isi_laporan.trim());
             formData.append('kategori', kategori);
 
             if (lampiran) {
@@ -223,7 +223,7 @@ export default function BuatLaporanScreen() {
                         <View style={styles.inputGroup}>
                             <Text style={styles.inputLabel}>Judul Laporan *</Text>
                             <TextInput
-                                value={judul}
+                                value={judul_laporan}
                                 onChangeText={setJudul}
                                 mode="outlined"
                                 placeholder="Contoh: Kerusakan AC di Ruang Meeting A"
@@ -232,7 +232,7 @@ export default function BuatLaporanScreen() {
                                 activeOutlineColor={theme.primary}
                                 maxLength={100}
                             />
-                            <Text style={styles.charCount}>{judul.length}/100</Text>
+                            <Text style={styles.charCount}>{judul_laporan.length}/100</Text>
                         </View>
 
                         {/* Kategori Selection */}
@@ -267,7 +267,7 @@ export default function BuatLaporanScreen() {
                         <View style={styles.inputGroup}>
                             <Text style={styles.inputLabel}>Deskripsi Detail *</Text>
                             <TextInput
-                                value={deskripsi}
+                                value={isi_laporan}
                                 onChangeText={setDeskripsi}
                                 mode="outlined"
                                 multiline
@@ -278,7 +278,7 @@ export default function BuatLaporanScreen() {
                                 activeOutlineColor={theme.primary}
                                 maxLength={500}
                             />
-                            <Text style={styles.charCount}>{deskripsi.length}/500</Text>
+                            <Text style={styles.charCount}>{isi_laporan.length}/500</Text>
                         </View>
 
                         {/* Attachment Section */}
@@ -360,7 +360,7 @@ export default function BuatLaporanScreen() {
                             mode="contained"
                             onPress={handleSubmit}
                             loading={loading}
-                            disabled={loading || !judul.trim() || !deskripsi.trim() || !kategori}
+                            disabled={loading || !judul_laporan.trim() || !isi_laporan.trim() || !kategori}
                             style={styles.submitButton}
                             contentStyle={styles.submitButtonContent}
                             buttonColor={theme.primary}
