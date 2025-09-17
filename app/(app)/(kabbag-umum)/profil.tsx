@@ -2,14 +2,20 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, View, ActivityIndicator } from 'react-native';
-import { Avatar, Button, Card } from 'react-native-paper';
+import { Avatar, Button, Card, useTheme, List, IconButton, Portal, Modal, Divider } from 'react-native-paper';
+import { useAppTheme, ThemePreference } from '@/context/ThemeContext';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { ThemeSettings } from '@/components/ThemeSettings';
 
 const API_URL = `${process.env.EXPO_PUBLIC_API_URL}`;
 
 export default function ProfilKabbagUmum() {
     const [user, setUser] = useState<{ nama: string; nik: string; email: string; role: string } | null>(null);
     const [loading, setLoading] = useState(true);
+    const [themeModalVisible, setThemeModalVisible] = useState(false);
     const router = useRouter();
+    const theme = useTheme();
+    const { themePreference, setThemePreference } = useAppTheme();
 
     useEffect(() => {
         const fetchProfile = async () => {
@@ -63,91 +69,308 @@ export default function ProfilKabbagUmum() {
         }
     };
 
+    const getThemeIcon = () => {
+        switch (themePreference) {
+            case 'light':
+                return 'sunny';
+            case 'dark':
+                return 'moon';
+            default:
+                return 'phone-portrait';
+        }
+    };
+
+    const getThemeLabel = () => {
+        switch (themePreference) {
+            case 'light':
+                return 'Terang';
+            case 'dark':
+                return 'Gelap';
+            default:
+                return 'Sistem';
+        }
+    };
+
+    const handleThemeSelectedFromSettings = (newTheme: ThemePreference) => {
+        setThemePreference(newTheme); // Set theme preference via context
+        setThemeModalVisible(false); // Dismiss the modal
+
+        // Provide feedback to the user
+        const themeOptionsForAlert = [ // Re-create themeOptions for alert only
+            { value: 'system', label: 'Ikuti Sistem' },
+            { value: 'light', label: 'Tema Terang' },
+            { value: 'dark', label: 'Tema Gelap' },
+        ];
+        const selectedOption = themeOptionsForAlert.find(option => option.value === newTheme);
+        Alert.alert(
+            'Tema Berhasil Diubah',
+            `Tema aplikasi telah diubah ke "${selectedOption?.label}"`,
+            [{ text: 'OK' }]
+        );
+    };
+
     if (loading) {
         return (
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f1f5f9' }}>
-                <ActivityIndicator size="large" color="#6366f1" />
+            <View style={[styles.loadingContainer, { backgroundColor: theme.colors.background }]}>
+                <ActivityIndicator size="large" color={theme.colors.primary} />
+                <Text style={[styles.loadingText, { color: theme.colors.onSurface }]}>
+                    Memuat profil...
+                </Text>
             </View>
         );
     }
 
     return (
-        <ScrollView style={{ flex: 1, backgroundColor: '#f1f5f9' }} contentContainerStyle={{ padding: 24 }}>
-            <View style={styles.centered}>
-                <Avatar.Icon size={80} icon="account-circle" color="#fff" style={{ backgroundColor: '#6366f1', marginBottom: 16 }} />
-                <Text style={styles.name}>{user?.nama || '-'}</Text>
-                <Text style={styles.role}>{user?.role || '-'}</Text>
-            </View>
-            <Card style={styles.infoCard}>
-                <Card.Content>
-                    <View style={styles.infoRow}>
-                        <Text style={styles.label}>NIK</Text>
-                        <Text style={styles.value}>{user?.nik || '-'}</Text>
+        <>
+            <ScrollView
+                style={[styles.container, { backgroundColor: theme.colors.background }]}
+                contentContainerStyle={styles.contentContainer}
+                showsVerticalScrollIndicator={false}
+            >
+                {/* Profile Header */}
+                <View style={styles.profileHeader}>
+                    <Avatar.Icon
+                        size={80}
+                        icon="account-circle"
+                        color={theme.colors.surface}
+                        style={[styles.avatar, { backgroundColor: theme.colors.primary }]}
+                    />
+                    <Text style={[styles.name, { color: theme.colors.onSurface }]}>
+                        {user?.nama || '-'}
+                    </Text>
+                    <Text style={[styles.role, { color: theme.colors.primary }]}>
+                        {user?.role || '-'}
+                    </Text>
+                </View>
+
+                {/* User Info Card */}
+                <Card style={[styles.infoCard, { backgroundColor: theme.colors.surface }]}>
+                    <Card.Content>
+                        <View style={[styles.infoRow, { borderBottomColor: theme.colors.outlineVariant }]}>
+                            <Text style={[styles.label, { color: theme.colors.onSurfaceVariant }]}>NIK</Text>
+                            <Text style={[styles.value, { color: theme.colors.onSurface }]}>{user?.nik || '-'}</Text>
+                        </View>
+                        <View style={[styles.infoRow, { borderBottomColor: theme.colors.outlineVariant }]}>
+                            <Text style={[styles.label, { color: theme.colors.onSurfaceVariant }]}>Email</Text>
+                            <Text style={[styles.value, { color: theme.colors.onSurface }]}>{user?.email || '-'}</Text>
+                        </View>
+                        <View style={[styles.infoRowLast, { borderBottomColor: theme.colors.outlineVariant }]}>
+                            <Text style={[styles.label, { color: theme.colors.onSurfaceVariant }]}>Role</Text>
+                            <Text style={[styles.value, { color: theme.colors.onSurface }]}>{user?.role || '-'}</Text>
+                        </View>
+                    </Card.Content>
+                </Card>
+
+                {/* Settings Card */}
+                <Card style={[styles.settingsCard, { backgroundColor: theme.colors.surface }]}>
+                    <Card.Content style={styles.cardContent}>
+                        <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
+                            Pengaturan
+                        </Text>
+
+                        {/* Theme Toggle */}
+                        <List.Item
+                            title="Tema Aplikasi"
+                            description={`Saat ini: ${getThemeLabel()}`}
+                            left={(props) => (
+                                <View style={styles.listIconContainer}>
+                                    <Ionicons
+                                        name={getThemeIcon() as any}
+                                        size={24}
+                                        color={theme.colors.primary}
+                                    />
+                                </View>
+                            )}
+                            right={(props) => (
+                                <IconButton
+                                    icon="chevron-right"
+                                    iconColor={theme.colors.onSurfaceVariant}
+                                    size={20}
+                                />
+                            )}
+                            onPress={() => setThemeModalVisible(true)}
+                            titleStyle={[styles.listTitle, { color: theme.colors.onSurface }]}
+                            descriptionStyle={[styles.listDescription, { color: theme.colors.onSurfaceVariant }]}
+                            style={styles.listItem}
+                        />
+                    </Card.Content>
+                </Card>
+
+                {/* Logout Button */}
+                <Button
+                    mode="contained"
+                    style={styles.logoutBtn}
+                    onPress={() => handleLogout()}
+                    buttonColor={theme.colors.error}
+                    textColor={theme.colors.onError}
+                    icon="logout"
+                >
+                    Keluar dari Aplikasi
+                </Button>
+            </ScrollView>
+
+            {/* Theme Selection Modal */}
+            <Portal>
+                <Modal
+                    visible={themeModalVisible}
+                    onDismiss={() => setThemeModalVisible(false)}
+                    contentContainerStyle={[
+                        styles.modalContainer,
+                        { backgroundColor: theme.colors.surface }
+                    ]}
+                >
+                    <View style={styles.modalHeader}>
+                        <Text style={[styles.modalTitle, { color: theme.colors.onSurface }]}>
+                            Pilih Tema Aplikasi
+                        </Text>
+                        <IconButton
+                            icon="close"
+                            size={24}
+                            iconColor={theme.colors.onSurfaceVariant}
+                            onPress={() => setThemeModalVisible(false)}
+                        />
                     </View>
-                    <View style={styles.infoRow}>
-                        <Text style={styles.label}>Email</Text>
-                        <Text style={styles.value}>{user?.email || '-'}</Text>
-                    </View>
-                    <View style={styles.infoRow}>
-                        <Text style={styles.label}>Role</Text>
-                        <Text style={styles.value}>{user?.role || '-'}</Text>
-                    </View>
-                </Card.Content>
-            </Card>
-            <Button mode="contained" style={styles.logoutBtn} onPress={() => handleLogout()} buttonColor="#ef4444">
-                Logout
-            </Button>
-        </ScrollView>
+
+                    <Divider style={{ backgroundColor: theme.colors.outlineVariant }} />
+
+                    {/* Use ThemeSettings component here */}
+                    <ThemeSettings onThemeSelected={handleThemeSelectedFromSettings} />
+
+                </Modal>
+            </Portal>
+        </>
     );
 }
 
 const styles = StyleSheet.create({
-    centered: {
+    container: {
+        flex: 1,
+    },
+    contentContainer: {
+        padding: 24,
+    },
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    loadingText: {
+        marginTop: 16,
+        fontSize: 16,
+        fontFamily: 'Rubik',
+    },
+    profileHeader: {
         alignItems: 'center',
         marginBottom: 32,
+    },
+    avatar: {
+        marginBottom: 16,
+        elevation: 4,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
     },
     name: {
         fontSize: 22,
         fontWeight: '700',
-        color: '#0f172a',
         marginBottom: 4,
+        fontFamily: 'RubikBold',
     },
     role: {
         fontSize: 15,
-        color: '#6366f1',
         fontWeight: '500',
         marginBottom: 12,
+        fontFamily: 'Rubik',
     },
     infoCard: {
-        borderRadius: 14,
-        backgroundColor: '#fff',
-        marginBottom: 32,
-        elevation: 0,
+        borderRadius: 16,
+        marginBottom: 20,
+        elevation: 2,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.04,
+        shadowOpacity: 0.05,
         shadowRadius: 2,
     },
     infoRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        paddingVertical: 10,
+        paddingVertical: 12,
         borderBottomWidth: 0.5,
-        borderBottomColor: '#e5e7eb',
+    },
+    infoRowLast: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        paddingVertical: 12,
     },
     label: {
         fontSize: 15,
-        color: '#64748b',
         fontWeight: '500',
+        fontFamily: 'Rubik',
     },
     value: {
         fontSize: 15,
-        color: '#0f172a',
         fontWeight: '600',
+        fontFamily: 'RubikBold',
+    },
+    settingsCard: {
+        borderRadius: 16,
+        marginBottom: 24,
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+    },
+    cardContent: {
+        paddingVertical: 8,
+    },
+    sectionTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        marginBottom: 8,
+        fontFamily: 'RubikBold',
+    },
+    listIconContainer: {
+        justifyContent: 'center',
+        alignItems: 'center',
+        width: 40,
+        height: 40,
+    },
+    listItem: {
+        paddingVertical: 8,
+    },
+    listTitle: {
+        fontSize: 16,
+        fontWeight: '600',
+        fontFamily: 'RubikBold',
+    },
+    listDescription: {
+        fontSize: 14,
+        fontFamily: 'Rubik',
     },
     logoutBtn: {
         marginTop: 24,
-        borderRadius: 8,
+        borderRadius: 12,
         paddingVertical: 6,
+        elevation: 2,
+    },
+    modalContainer: {
+        margin: 20,
+        borderRadius: 16,
+        elevation: 8,
+        maxHeight: '70%',
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: 16,
+        paddingBottom: 12,
+    },
+    modalTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        fontFamily: 'RubikBold',
     },
 });

@@ -142,7 +142,7 @@ export default function BuatLaporanScreen() {
                 } as any);
             }
 
-            const response = await fetch(`${API_URL}/laporan`, {
+            const response = await fetch(`${API_URL}/api/laporan`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
