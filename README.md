@@ -1,10 +1,5 @@
 # Welcome to your Expo app 👋
 
-
-C:\Users\apria\AppData\Local\Android\Sdk\emulator
-%LOCALAPPDATA%\Android\Sdk\emulator
-emulator -avd Pixel_8_Pro_API_35
-
 This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
 
 ## Get started

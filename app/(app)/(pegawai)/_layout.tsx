@@ -91,20 +91,6 @@ export default function PegawaiLayout() {
       />
 
       <Tabs.Screen
-        name="kelola_laporan"
-        options={{
-          title: 'Kelola',
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons
-              name={focused ? 'document-text' : 'document-text-outline'}
-              size={focused ? 24 : 22}
-              color={color}
-            />
-          ),
-        }}
-      />
-
-      <Tabs.Screen
         name="riwayat-laporan"
         options={{
           title: 'Riwayat',
