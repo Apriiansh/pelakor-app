@@ -1,54 +1,33 @@
 import React, { useEffect, useState } from 'react';
 import { View, Alert, Image, ScrollView, Text, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
-import { TextInput, Button, IconButton, Card, Chip, Portal, Modal } from 'react-native-paper';
+import { TextInput, Button, IconButton, Card, Portal, Modal } from 'react-native-paper';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useAppTheme } from '@/context/ThemeContext';
 
 const { width } = Dimensions.get('window');
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
-// Enhanced theme colors
-const theme = {
-    primary: '#6366f1',
-    primaryDark: '#4f46e5',
-    primaryLight: '#a5b4fc',
-    background: '#f8fafc',
-    surface: '#ffffff',
-    text: '#0f172a',
-    textSecondary: '#475569',
-    subtle: '#64748b',
-    accent: '#3b82f6',
-    error: '#ef4444',
-    success: '#10b981',
-    warning: '#f59e0b',
-    // Gradient colors
-    gradientStart: '#667eea',
-    gradientEnd: '#764ba2',
-    // Light colors
-    blue50: '#eff6ff',
-    blue100: '#dbeafe',
-    green50: '#f0fdf4',
-    amber50: '#fffbeb',
-};
-
-const categories = [
-    { label: 'Makan & Minum', value: 'konsumsi', icon: 'food', color: theme.accent },
-    { label: 'Kebutuhan', value: 'kebutuhan', icon: 'pen', color: theme.primary },
-    { label: 'Kerusakan', value: 'kerusakan', icon: 'alert-circle', color: theme.error },
-];
-
 export default function BuatLaporanScreen() {
     const router = useRouter();
     const params = useLocalSearchParams();
+    const { theme } = useAppTheme();
+
     const [judul_laporan, setJudul] = useState('');
     const [isi_laporan, setDeskripsi] = useState('');
     const [kategori, setKategori] = useState('');
     const [lampiran, setLampiran] = useState<any>(null);
     const [loading, setLoading] = useState(false);
     const [showCategoryModal, setShowCategoryModal] = useState(false);
+
+    const categories = [
+        { label: 'Makan & Minum', value: 'konsumsi', icon: 'food', color: theme.colors.secondary },
+        { label: 'Kebutuhan', value: 'kebutuhan', icon: 'pen', color: theme.colors.primary },
+        { label: 'Kerusakan', value: 'kerusakan', icon: 'alert-circle', color: theme.colors.error },
+    ];
 
     useEffect(() => {
         if (params.title) {
@@ -183,12 +162,267 @@ export default function BuatLaporanScreen() {
     const getCategoryLabel = (value: string) => {
         return categories.find(cat => cat.value === value)?.label || value;
     };
+    
+    const styles = StyleSheet.create({
+        container: {
+            flex: 1,
+            backgroundColor: theme.colors.background,
+        },
+        headerGradient: {
+            paddingTop: 60,
+            paddingBottom: 24,
+            paddingHorizontal: 20,
+        },
+        headerContent: {
+            gap: 12,
+        },
+        headerTop: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+        },
+        backButton: {
+            backgroundColor: 'rgba(255, 255, 255, 0.2)',
+            margin: 0,
+        },
+        headerTitle: {
+            fontSize: 20,
+            fontWeight: 'bold',
+            color: 'white',
+            flex: 1,
+            textAlign: 'center',
+        },
+        placeholder: {
+            width: 40,
+        },
+        headerSubtitle: {
+            fontSize: 14,
+            color: 'rgba(255, 255, 255, 0.8)',
+            textAlign: 'center',
+        },
+    
+        scrollView: {
+            flex: 1,
+        },
+        scrollContent: {
+            paddingHorizontal: 16,
+            paddingTop: 16,
+            paddingBottom: 100,
+        },
+    
+        formCard: {
+            backgroundColor: theme.colors.surface,
+            borderRadius: 16,
+            marginBottom: 16,
+        },
+        formContent: {
+            padding: 20,
+        },
+    
+        inputGroup: {
+            marginBottom: 24,
+        },
+        inputLabel: {
+            fontSize: 16,
+            fontWeight: '600',
+            color: theme.colors.onSurface,
+            marginBottom: 8,
+        },
+        inputHint: {
+            fontSize: 12,
+            color: theme.colors.onSurfaceVariant,
+            marginBottom: 12,
+        },
+        textInput: {
+            backgroundColor: theme.colors.surface,
+            fontSize: 16,
+        },
+        textArea: {
+            minHeight: 120,
+        },
+        charCount: {
+            fontSize: 12,
+            color: theme.colors.onSurfaceVariant,
+            textAlign: 'right',
+            marginTop: 4,
+        },
+    
+        categorySelector: {
+            borderWidth: 1,
+            borderColor: theme.colors.outline,
+            borderRadius: 8,
+            backgroundColor: theme.colors.surface,
+        },
+        categorySelectorContent: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            paddingHorizontal: 16,
+            paddingVertical: 12,
+        },
+        selectedCategoryContainer: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            flex: 1,
+        },
+        categoryIcon: {
+            margin: 0,
+            marginRight: 8,
+        },
+        selectedCategoryText: {
+            fontSize: 16,
+            color: theme.colors.onSurface,
+            fontWeight: '500',
+        },
+        categoryPlaceholder: {
+            fontSize: 16,
+            color: theme.colors.onSurfaceVariant,
+        },
+        attachmentOptions: {
+            flexDirection: 'row',
+            gap: 16,
+            justifyContent: 'space-around',
+            marginBottom: 16,
+        },
+        attachmentButton: {
+            alignItems: 'center',
+            gap: 8,
+        },
+        attachmentIconContainer: {
+            borderRadius: 16,
+            padding: 8,
+        },
+        attachmentLabel: {
+            fontSize: 12,
+            fontWeight: '500',
+            color: theme.colors.onSurfaceVariant,
+        },
+    
+        attachmentPreview: {
+            backgroundColor: theme.colors.primaryContainer,
+            borderRadius: 12,
+            marginTop: 8,
+        },
+        attachmentPreviewContent: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: 12,
+        },
+        attachmentInfo: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            flex: 1,
+            gap: 12,
+        },
+        attachmentImage: {
+            width: 48,
+            height: 48,
+            borderRadius: 8,
+        },
+        attachmentFileIcon: {
+            width: 48,
+            height: 48,
+            backgroundColor: theme.colors.surface,
+            borderRadius: 8,
+            alignItems: 'center',
+            justifyContent: 'center',
+        },
+        attachmentDetails: {
+            flex: 1,
+        },
+        attachmentName: {
+            fontSize: 14,
+            fontWeight: '500',
+            color: theme.colors.onSurface,
+        },
+        attachmentSize: {
+            fontSize: 12,
+            color: theme.colors.onSurfaceVariant,
+        },
+    
+        submitCard: {
+            backgroundColor: theme.colors.surface,
+            borderRadius: 16,
+        },
+        submitContent: {
+            padding: 20,
+            alignItems: 'center',
+        },
+        submitButton: {
+            width: '100%',
+            borderRadius: 12,
+        },
+        submitButtonContent: {
+            paddingVertical: 8,
+        },
+        submitButtonText: {
+            fontSize: 16,
+            fontWeight: 'bold',
+            color: 'white',
+        },
+        submitHint: {
+            fontSize: 12,
+            color: theme.colors.onSurfaceVariant,
+            textAlign: 'center',
+            marginTop: 12,
+        },
+    
+        // Modal styles
+        modalContent: {
+            backgroundColor: theme.colors.surface,
+            margin: 20,
+            borderRadius: 16,
+            maxHeight: '80%',
+        },
+        modalTitle: {
+            fontSize: 18,
+            fontWeight: 'bold',
+            color: theme.colors.onSurface,
+            textAlign: 'center',
+            padding: 20,
+            borderBottomWidth: 1,
+            borderBottomColor: theme.colors.outline,
+        },
+        categoryList: {
+            maxHeight: 400,
+        },
+        categoryItem: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            paddingHorizontal: 20,
+            paddingVertical: 16,
+            borderBottomWidth: 1,
+            borderBottomColor: theme.colors.surfaceVariant,
+        },
+        categoryItemSelected: {
+            backgroundColor: theme.colors.primaryContainer,
+        },
+        categoryItemContent: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            flex: 1,
+        },
+        categoryItemIcon: {
+            margin: 0,
+            marginRight: 12,
+        },
+        categoryItemText: {
+            fontSize: 16,
+            color: theme.colors.onSurface,
+        },
+        categoryItemTextSelected: {
+            fontWeight: '600',
+            color: theme.colors.primary,
+        },
+    });
 
     return (
         <View style={styles.container}>
             {/* Header with Gradient */}
             <LinearGradient
-                colors={[theme.gradientStart, theme.gradientEnd]}
+                colors={[theme.colors.gradientStart, theme.colors.gradientEnd]}
                 style={styles.headerGradient}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
@@ -228,8 +462,8 @@ export default function BuatLaporanScreen() {
                                 mode="outlined"
                                 placeholder="Contoh: Kerusakan AC di Ruang Meeting A"
                                 style={styles.textInput}
-                                outlineColor={theme.subtle}
-                                activeOutlineColor={theme.primary}
+                                outlineColor={theme.colors.outline}
+                                activeOutlineColor={theme.colors.primary}
                                 maxLength={100}
                             />
                             <Text style={styles.charCount}>{judul_laporan.length}/100</Text>
@@ -258,7 +492,7 @@ export default function BuatLaporanScreen() {
                                     ) : (
                                         <Text style={styles.categoryPlaceholder}>Pilih kategori laporan</Text>
                                     )}
-                                    <IconButton icon="chevron-down" size={20} iconColor={theme.subtle} />
+                                    <IconButton icon="chevron-down" size={20} iconColor={theme.colors.onSurfaceVariant} />
                                 </View>
                             </TouchableOpacity>
                         </View>
@@ -274,8 +508,8 @@ export default function BuatLaporanScreen() {
                                 numberOfLines={5}
                                 placeholder="Jelaskan masalah atau permintaan Anda secara detail..."
                                 style={[styles.textInput, styles.textArea]}
-                                outlineColor={theme.subtle}
-                                activeOutlineColor={theme.primary}
+                                outlineColor={theme.colors.outline}
+                                activeOutlineColor={theme.colors.primary}
                                 maxLength={500}
                             />
                             <Text style={styles.charCount}>{isi_laporan.length}/500</Text>
@@ -290,22 +524,22 @@ export default function BuatLaporanScreen() {
 
                             <View style={styles.attachmentOptions}>
                                 <TouchableOpacity style={styles.attachmentButton} onPress={pickCamera}>
-                                    <View style={[styles.attachmentIconContainer, { backgroundColor: theme.blue50 }]}>
-                                        <IconButton icon="camera" size={24} iconColor={theme.accent} />
+                                    <View style={[styles.attachmentIconContainer, { backgroundColor: theme.colors.blueLight }]}>
+                                        <IconButton icon="camera" size={24} iconColor={theme.colors.primary} />
                                     </View>
                                     <Text style={styles.attachmentLabel}>Kamera</Text>
                                 </TouchableOpacity>
 
                                 <TouchableOpacity style={styles.attachmentButton} onPress={pickImage}>
-                                    <View style={[styles.attachmentIconContainer, { backgroundColor: theme.green50 }]}>
-                                        <IconButton icon="image" size={24} iconColor={theme.success} />
+                                    <View style={[styles.attachmentIconContainer, { backgroundColor: theme.colors.greenLight }]}>
+                                        <IconButton icon="image" size={24} iconColor={theme.colors.success} />
                                     </View>
                                     <Text style={styles.attachmentLabel}>Galeri</Text>
                                 </TouchableOpacity>
 
                                 <TouchableOpacity style={styles.attachmentButton} onPress={pickDocument}>
-                                    <View style={[styles.attachmentIconContainer, { backgroundColor: theme.amber50 }]}>
-                                        <IconButton icon="file-document" size={24} iconColor={theme.warning} />
+                                    <View style={[styles.attachmentIconContainer, { backgroundColor: theme.colors.amberLight }]}>
+                                        <IconButton icon="file-document" size={24} iconColor={theme.colors.warning} />
                                     </View>
                                     <Text style={styles.attachmentLabel}>Dokumen</Text>
                                 </TouchableOpacity>
@@ -327,7 +561,7 @@ export default function BuatLaporanScreen() {
                                                     <IconButton
                                                         icon="file-document"
                                                         size={32}
-                                                        iconColor={theme.primary}
+                                                        iconColor={theme.colors.primary}
                                                     />
                                                 </View>
                                             )}
@@ -343,7 +577,7 @@ export default function BuatLaporanScreen() {
                                         <IconButton
                                             icon="close-circle"
                                             size={24}
-                                            iconColor={theme.error}
+                                            iconColor={theme.colors.error}
                                             onPress={clearLampiran}
                                         />
                                     </Card.Content>
@@ -363,7 +597,7 @@ export default function BuatLaporanScreen() {
                             disabled={loading || !judul_laporan.trim() || !isi_laporan.trim() || !kategori}
                             style={styles.submitButton}
                             contentStyle={styles.submitButtonContent}
-                            buttonColor={theme.primary}
+                            buttonColor={theme.colors.primary}
                         >
                             <Text style={styles.submitButtonText}>
                                 {loading ? 'Mengirim Laporan...' : 'Kirim Laporan'}
@@ -413,7 +647,7 @@ export default function BuatLaporanScreen() {
                                     </Text>
                                 </View>
                                 {kategori === category.value && (
-                                    <IconButton icon="check" size={20} iconColor={theme.primary} />
+                                    <IconButton icon="check" size={20} iconColor={theme.colors.primary} />
                                 )}
                             </TouchableOpacity>
                         ))}
@@ -423,258 +657,3 @@ export default function BuatLaporanScreen() {
         </View>
     );
 }
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: theme.background,
-    },
-    headerGradient: {
-        paddingTop: 60,
-        paddingBottom: 24,
-        paddingHorizontal: 20,
-    },
-    headerContent: {
-        gap: 12,
-    },
-    headerTop: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-    },
-    backButton: {
-        backgroundColor: 'rgba(255, 255, 255, 0.2)',
-        margin: 0,
-    },
-    headerTitle: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: 'white',
-        flex: 1,
-        textAlign: 'center',
-    },
-    placeholder: {
-        width: 40,
-    },
-    headerSubtitle: {
-        fontSize: 14,
-        color: 'rgba(255, 255, 255, 0.8)',
-        textAlign: 'center',
-    },
-
-    scrollView: {
-        flex: 1,
-    },
-    scrollContent: {
-        paddingHorizontal: 16,
-        paddingTop: 16,
-        paddingBottom: 100,
-    },
-
-    formCard: {
-        backgroundColor: theme.surface,
-        borderRadius: 16,
-        marginBottom: 16,
-    },
-    formContent: {
-        padding: 20,
-    },
-
-    inputGroup: {
-        marginBottom: 24,
-    },
-    inputLabel: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: theme.text,
-        marginBottom: 8,
-    },
-    inputHint: {
-        fontSize: 12,
-        color: theme.subtle,
-        marginBottom: 12,
-    },
-    textInput: {
-        backgroundColor: theme.surface,
-        fontSize: 16,
-    },
-    textArea: {
-        minHeight: 120,
-    },
-    charCount: {
-        fontSize: 12,
-        color: theme.subtle,
-        textAlign: 'right',
-        marginTop: 4,
-    },
-
-    categorySelector: {
-        borderWidth: 1,
-        borderColor: theme.subtle,
-        borderRadius: 8,
-        backgroundColor: theme.surface,
-    },
-    categorySelectorContent: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-    },
-    selectedCategoryContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        flex: 1,
-    },
-    categoryIcon: {
-        margin: 0,
-        marginRight: 8,
-    },
-    selectedCategoryText: {
-        fontSize: 16,
-        color: theme.text,
-        fontWeight: '500',
-    },
-    categoryPlaceholder: {
-        fontSize: 16,
-        color: theme.subtle,
-    },
-    attachmentOptions: {
-        flexDirection: 'row',
-        gap: 16,
-        justifyContent: 'space-around',
-        marginBottom: 16,
-    },
-    attachmentButton: {
-        alignItems: 'center',
-        gap: 8,
-    },
-    attachmentIconContainer: {
-        borderRadius: 16,
-        padding: 8,
-    },
-    attachmentLabel: {
-        fontSize: 12,
-        fontWeight: '500',
-        color: theme.textSecondary,
-    },
-
-    attachmentPreview: {
-        backgroundColor: theme.blue50,
-        borderRadius: 12,
-        marginTop: 8,
-    },
-    attachmentPreviewContent: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: 12,
-    },
-    attachmentInfo: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        flex: 1,
-        gap: 12,
-    },
-    attachmentImage: {
-        width: 48,
-        height: 48,
-        borderRadius: 8,
-    },
-    attachmentFileIcon: {
-        width: 48,
-        height: 48,
-        backgroundColor: theme.surface,
-        borderRadius: 8,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    attachmentDetails: {
-        flex: 1,
-    },
-    attachmentName: {
-        fontSize: 14,
-        fontWeight: '500',
-        color: theme.text,
-    },
-    attachmentSize: {
-        fontSize: 12,
-        color: theme.subtle,
-    },
-
-    submitCard: {
-        backgroundColor: theme.surface,
-        borderRadius: 16,
-    },
-    submitContent: {
-        padding: 20,
-        alignItems: 'center',
-    },
-    submitButton: {
-        width: '100%',
-        borderRadius: 12,
-    },
-    submitButtonContent: {
-        paddingVertical: 8,
-    },
-    submitButtonText: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        color: 'white',
-    },
-    submitHint: {
-        fontSize: 12,
-        color: theme.subtle,
-        textAlign: 'center',
-        marginTop: 12,
-    },
-
-    // Modal styles
-    modalContent: {
-        backgroundColor: theme.surface,
-        margin: 20,
-        borderRadius: 16,
-        maxHeight: '80%',
-    },
-    modalTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: theme.text,
-        textAlign: 'center',
-        padding: 20,
-        borderBottomWidth: 1,
-        borderBottomColor: '#e2e8f0',
-    },
-    categoryList: {
-        maxHeight: 400,
-    },
-    categoryItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 20,
-        paddingVertical: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: '#f1f5f9',
-    },
-    categoryItemSelected: {
-        backgroundColor: theme.blue50,
-    },
-    categoryItemContent: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        flex: 1,
-    },
-    categoryItemIcon: {
-        margin: 0,
-        marginRight: 12,
-    },
-    categoryItemText: {
-        fontSize: 16,
-        color: theme.text,
-    },
-    categoryItemTextSelected: {
-        fontWeight: '600',
-        color: theme.primary,
-    },
-});

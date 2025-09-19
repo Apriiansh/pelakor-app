@@ -153,7 +153,7 @@ export const getLaporanDiajukan = () => {
  */
 export const postDisposisi = (laporan_id: string, data: {
     nik_penanggung_jawab?: string;
-    catatan?: string;
+    catatan_disposisi?: string; 
     valid: boolean;
 }) => {
     return apiFetch(`/api/disposisi/${laporan_id}`, {
@@ -220,7 +220,7 @@ export interface User {
     nama: string;
     nik: string;
     email: string;
-    role: 'admin' | 'kabbag' | 'subbag' | 'pegawai';
+    role: 'kabbag_umum' | 'subbag_umum' | 'pegawai';
     jabatan?: string;
 }
 
@@ -245,10 +245,10 @@ export interface Laporan {
 
 export interface DisposisiHistory {
     id: number;
-    catatan?: string;
     status_disposisi: string;
-    created_at: string;
+    catatan_disposisi: string;
     kabbag: string;
+    created_at: string;
     penanggung_jawab?: string;
 }
 
@@ -288,8 +288,8 @@ export const getUsersByRole = (role: string) => {
  * GET /api/users/subbag
  * Ambil daftar subbag untuk dropdown disposisi
  */
-export const getSubbagUsers = () => {
-    return apiFetch('/api/users/subbag');
+export const getSubbagUmum = () => {
+    return apiFetch('/api/users/subbag-umum');
 };
 
 /**

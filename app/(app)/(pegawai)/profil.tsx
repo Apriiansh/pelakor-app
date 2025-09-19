@@ -11,7 +11,7 @@ import { ThemeSettings } from '@/components/ThemeSettings';
 const API_URL = `${process.env.EXPO_PUBLIC_API_URL}`;
 
 export default function ProfilPegawai() {
-    const [user, setUser] = useState<{ nama: string; nik: string; email: string; role: string } | null>(null);
+    const [user, setUser] = useState<{ nama: string; nik: string; email: string; jabatan: String; role: string } | null>(null);
     const [loading, setLoading] = useState(true);
     const [themeModalVisible, setThemeModalVisible] = useState(false);
     const router = useRouter();
@@ -28,7 +28,7 @@ export default function ProfilPegawai() {
                     return;
                 }
 
-                const response = await fetch(`${API_URL}/users/me`, {
+                const response = await fetch(`${API_URL}/api/users/me`, {
                     headers: {
                         'Authorization': `Bearer ${token}`,
                     },
@@ -140,9 +140,9 @@ export default function ProfilPegawai() {
                     <Text style={[styles.name, { color: theme.colors.onSurface }]}>
                         {user?.nama || '-'}
                     </Text>
-                    <Text style={[styles.role, { color: theme.colors.primary }]}>
+                    {/* <Text style={[styles.role, { color: theme.colors.primary }]}>
                         {user?.role || '-'}
-                    </Text>
+                    </Text> */}
                 </View>
 
                 {/* User Info Card */}
@@ -157,9 +157,13 @@ export default function ProfilPegawai() {
                             <Text style={[styles.value, { color: theme.colors.onSurface }]}>{user?.email || '-'}</Text>
                         </View>
                         <View style={[styles.infoRowLast, { borderBottomColor: theme.colors.outlineVariant }]}>
+                            <Text style={[styles.label, { color: theme.colors.onSurfaceVariant }]}>Jabatan</Text>
+                            <Text style={[styles.value, { color: theme.colors.onSurface }]}>{user?.jabatan || '-'}</Text>
+                        </View>
+                        {/* <View style={[styles.infoRowLast, { borderBottomColor: theme.colors.outlineVariant }]}>
                             <Text style={[styles.label, { color: theme.colors.onSurfaceVariant }]}>Role</Text>
                             <Text style={[styles.value, { color: theme.colors.onSurface }]}>{user?.role || '-'}</Text>
-                        </View>
+                        </View> */}
                     </Card.Content>
                 </Card>
 

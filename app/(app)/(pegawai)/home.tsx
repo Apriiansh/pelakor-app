@@ -31,7 +31,7 @@ const quickActions = [
 // --- END DUMMY DATA ---
 
 export default function PegawaiHomeScreen() {
-    const [user, setUser] = useState<{ nama: string; role: string; avatar?: string } | null>(null);
+    const [user, setUser] = useState<{ nama: string; jabatan: string; avatar?: string } | null>(null);
     const [currentTime, setCurrentTime] = useState(new Date());
     const [refreshing, setRefreshing] = useState(false);
 
@@ -214,7 +214,7 @@ export default function PegawaiHomeScreen() {
         avatarLabel: { color: 'white', fontFamily: 'RubikBold' },
         greeting: { fontSize: 14, color: 'rgba(255, 255, 255, 0.8)', fontFamily: 'Rubik' },
         userName: { fontSize: 20, color: 'white', marginTop: 2, fontFamily: 'RubikBold' },
-        userRole: { fontSize: 14, color: 'rgba(255, 255, 255, 0.8)', fontFamily: 'Rubik' },
+        userJabatan: { fontSize: 14, color: 'rgba(255, 255, 255, 0.8)', fontFamily: 'Rubik' },
         headerActions: { flexDirection: 'row', alignItems: 'center' },
         notificationButton: { backgroundColor: 'rgba(255, 255, 255, 0.2)', margin: 0 },
         dateText: { fontSize: 14, color: 'rgba(255, 255, 255, 0.9)', textAlign: 'center', fontFamily: 'Rubik' },
@@ -282,7 +282,7 @@ export default function PegawaiHomeScreen() {
                             <View>
                                 <Text style={styles.greeting}>{getGreeting()}</Text>
                                 <Text style={styles.userName}>{user?.nama || 'Pengguna'}</Text>
-                                <Text style={styles.userRole}>{user?.role || 'Pegawai'}</Text>
+                                <Text style={styles.userJabatan}>{user?.jabatan || 'Pegawai'}</Text>
                             </View>
                         </View>
                         <View style={styles.headerActions}>

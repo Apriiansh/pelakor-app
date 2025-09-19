@@ -35,11 +35,11 @@ export default function KabbagUmumLayout() {
           fontSize: 11,
           fontWeight: "600",
           marginTop: 4,
-          fontFamily: "Rubik", // Use custom font
+          fontFamily: "Rubik",
         },
         centerTabLabel: {
           fontWeight: "bold",
-          fontFamily: "RubikBold", // Use bold font for center tab
+          fontFamily: "RubikBold", 
         },
         tabBarItem: {
           paddingVertical: 4,
@@ -129,26 +129,12 @@ export default function KabbagUmumLayout() {
           ),
         }}
       />
+      <Tabs.Screen
+        name="riwayat_disposisi"
+        options={{
+          href: null,
+        }}
+      />
     </Tabs>
   );
 }
-
-const styles = StyleSheet.create({
-  tabBar: {
-    backgroundColor: "#fff",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    height: 70,
-    paddingBottom: 8,
-    paddingHorizontal: 16,
-    paddingTop: 6,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
-    elevation: 10,
-  },
-  tabBarLabel: {
-    fontSize: 12,
-  },
-});

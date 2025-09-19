@@ -1,553 +1,476 @@
-import React, { useState, useEffect, useCallback, JSX } from 'react';
-import { StyleSheet, View, FlatList, RefreshControl, Alert } from 'react-native';
+
+import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Button,
-    Card,
-    Dialog,
-    Portal,
+    View,
+    Alert,
+    ScrollView,
     Text,
-    TextInput,
-    Appbar,
-    Menu,
-    Divider,
-    Snackbar,
-    HelperText,
+    StyleSheet,
+    RefreshControl,
+} from 'react-native';
+import {
+    Button,
+    IconButton,
+    Card,
     Chip,
+    ActivityIndicator,
+    Avatar
 } from 'react-native-paper';
-import { useAppTheme } from '@/context/ThemeContext';
 import { useRouter } from 'expo-router';
-import { format, parseISO } from 'date-fns';
-import { id } from 'date-fns/locale';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useAppTheme } from '@/context/ThemeContext';
+import { getLaporanDiajukan, getSubbagUmum, Laporan, User, ApiError } from '@/utils/api';
+import { DisposisiDialog } from '@/components/laporan/DisposisiDialog';
 
-// Import API functions dan types
-import * as api from '@/utils/api';
-import type { Laporan, User } from '@/utils/api';
-
-// Extended types untuk screen ini
-interface SnackbarState {
-    visible: boolean;
-    message: string;
-    type?: 'success' | 'error' | 'info';
-}
-
-export default function DisposisiLaporanScreen(): JSX.Element {
-    const theme = useAppTheme().theme;
+export default function DisposisiScreen() {
     const router = useRouter();
+    const { theme } = useAppTheme();
+    const styles = createStyles(theme);
 
-    // State management
-    const [laporanList, setLaporanList] = useState<Laporan[]>([]);
-    const [subbagList, setSubbagList] = useState<User[]>([]);
-    const [selectedLaporan, setSelectedLaporan] = useState<Laporan | null>(null);
-
+    const [laporan, setLaporan] = useState<Laporan[]>([]);
+    const [subbagUsers, setSubbagUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
-    const [isDialogVisible, setDialogVisible] = useState(false);
-    const [isSubmitting, setSubmitting] = useState(false);
 
-    // Form state
-    const [catatan, setCatatan] = useState('');
-    const [selectedSubbag, setSelectedSubbag] = useState<User | null>(null);
-    const [menuVisible, setMenuVisible] = useState(false);
-    const [formError, setFormError] = useState('');
+    // Modal state
+    const [showDisposisiModal, setShowDisposisiModal] = useState(false);
+    const [selectedLaporan, setSelectedLaporan] = useState<Laporan | null>(null);
 
-    // Snackbar state
-    const [snackbar, setSnackbar] = useState<SnackbarState>({
-        visible: false,
-        message: '',
-        type: 'info'
-    });
+    const categories = {
+        konsumsi: { label: 'Makan & Minum', icon: 'food', color: theme.colors.secondary },
+        kebutuhan: { label: 'Kebutuhan', icon: 'pen', color: theme.colors.primary },
+        kerusakan: { label: 'Kerusakan', icon: 'alert-circle', color: theme.colors.error },
+        lainnya: { label: 'Lainnya', icon: 'help-circle', color: theme.colors.onSurfaceVariant },
+    };
 
-    // Fetch data function dengan proper error handling
-    const fetchData = useCallback(async (): Promise<void> => {
+    useEffect(() => {
+        loadData();
+    }, []);
+
+    const loadData = async () => {
         try {
             setLoading(true);
-
-            // Fetch laporan yang diajukan dan daftar subbag secara bersamaan
             const [laporanData, subbagData] = await Promise.all([
-                api.getLaporanDiajukan(),
-                api.getSubbagUsers()
+                getLaporanDiajukan(),
+                getSubbagUmum()
             ]);
-
-            setLaporanList(laporanData);
-            setSubbagList(subbagData);
-
+            setLaporan(laporanData);
+            setSubbagUsers(subbagData);
         } catch (error) {
-            const errorMessage = error instanceof api.ApiError
-                ? error.message
-                : 'Gagal memuat data. Periksa koneksi internet Anda.';
-
-            setSnackbar({
-                visible: true,
-                message: errorMessage,
-                type: 'error'
-            });
-
-            console.error('Error fetching data:', error);
+            console.error('Error loading data:', error);
+            const errorMessage = error instanceof ApiError ? error.message : 'Gagal memuat data';
+            Alert.alert('Error', errorMessage);
         } finally {
             setLoading(false);
-            setRefreshing(false);
         }
-    }, []);
+    };
 
-    // Initial data fetch
-    useEffect(() => {
-        fetchData();
-    }, [fetchData]);
-
-    // Refresh handler
-    const onRefresh = useCallback((): void => {
-        setRefreshing(true);
-        fetchData();
-    }, [fetchData]);
-
-    // Dialog handlers
-    const openDialog = useCallback((laporan: Laporan): void => {
-        setSelectedLaporan(laporan);
-        setCatatan('');
-        setSelectedSubbag(null);
-        setFormError('');
-        setDialogVisible(true);
-    }, []);
-
-    const closeDialog = useCallback((): void => {
-        setDialogVisible(false);
-        setSelectedLaporan(null);
-        setCatatan('');
-        setSelectedSubbag(null);
-        setFormError('');
-    }, []);
-
-    // Form validation
-    const validateForm = useCallback((valid: boolean): string => {
-        if (valid && !selectedSubbag) {
-            return 'Penanggung jawab wajib dipilih untuk menyetujui laporan.';
-        }
-        if (!valid && !catatan.trim()) {
-            return 'Catatan wajib diisi saat menolak laporan.';
-        }
-        return '';
-    }, [selectedSubbag, catatan]);
-
-    // Handle disposisi with confirmation
-    const handleDisposisi = useCallback(async (valid: boolean): Promise<void> => {
-        const validationError = validateForm(valid);
-        if (validationError) {
-            setFormError(validationError);
-            return;
-        }
-
-        // Show confirmation dialog
-        Alert.alert(
-            'Konfirmasi Disposisi',
-            `Apakah Anda yakin ingin ${valid ? 'menyetujui' : 'menolak'} laporan ini?`,
-            [
-                {
-                    text: 'Batal',
-                    style: 'cancel',
-                },
-                {
-                    text: 'Ya, Lanjutkan',
-                    style: valid ? 'default' : 'destructive',
-                    onPress: () => submitDisposisi(valid),
-                },
-            ]
-        );
-    }, [validateForm]);
-
-    // Submit disposisi
-    const submitDisposisi = useCallback(async (valid: boolean): Promise<void> => {
-        if (!selectedLaporan) return;
-
-        setFormError('');
-        setSubmitting(true);
-
+    const loadLaporanDisposisi = async () => {
         try {
-            const result = await api.postDisposisi(selectedLaporan.id_laporan.toString(), {
-                valid,
-                catatan: catatan.trim() || undefined,
-                nik_penanggung_jawab: selectedSubbag?.nik,
-            });
-
-            setSnackbar({
-                visible: true,
-                message: result.message || `Laporan berhasil ${valid ? 'disetujui' : 'ditolak'}`,
-                type: 'success'
-            });
-
-            closeDialog();
-            onRefresh(); // Refresh the list
-
+            const data = await getLaporanDiajukan();
+            setLaporan(data);
         } catch (error) {
-            const errorMessage = error instanceof api.ApiError
-                ? error.message
-                : 'Terjadi kesalahan saat memproses disposisi.';
-
-            setSnackbar({
-                visible: true,
-                message: errorMessage,
-                type: 'error'
-            });
-        } finally {
-            setSubmitting(false);
+            console.error('Error loading laporan:', error);
+            const errorMessage = error instanceof ApiError ? error.message : 'Gagal memuat laporan';
+            Alert.alert('Error', errorMessage);
         }
-    }, [selectedLaporan, catatan, selectedSubbag, closeDialog, onRefresh]);
+    };
 
-    // Format date utility
-    const formatDate = useCallback((dateString: string): string => {
-        try {
-            return format(parseISO(dateString), 'd MMMM yyyy, HH:mm', { locale: id });
-        } catch {
-            return dateString;
-        }
-    }, []);
+    const onRefresh = async () => {
+        setRefreshing(true);
+        await loadData();
+        setRefreshing(false);
+    };
 
-    // Render laporan item
-    const renderLaporanItem = useCallback(({ item }: { item: Laporan }): JSX.Element => (
-        <Card style={styles.card} onPress={() => openDialog(item)}>
-            <Card.Title
-                title={item.judul_laporan}
-                subtitle={`Oleh: ${item.pelapor}`}
-                titleStyle={styles.cardTitle}
-                right={(props) => (
-                    <Chip
-                        {...props}
-                        mode="outlined"
-                        compact
-                        style={[styles.statusChip, { borderColor: theme.colors.primary }]}
-                        textStyle={{ color: theme.colors.primary }}
-                    >
-                        {item.status_laporan.toUpperCase()}
-                    </Chip>
-                )}
-            />
-            <Card.Content>
-                <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-                    {item.isi_laporan.length > 100
-                        ? `${item.isi_laporan.substring(0, 100)}...`
-                        : item.isi_laporan
-                    }
-                </Text>
-                <Text variant="bodySmall" style={[styles.dateText, { color: theme.colors.onSurfaceVariant }]}>
-                    Diajukan pada: {formatDate(item.created_at)}
-                </Text>
-                {item.kategori && (
-                    <Chip
-                        mode="outlined"
-                        compact
-                        style={styles.categoryChip}
-                        textStyle={{ fontSize: 12 }}
-                    >
-                        {item.kategori}
-                    </Chip>
-                )}
-            </Card.Content>
-        </Card>
-    ), [theme.colors, openDialog, formatDate]);
+    const openDisposisiModal = (laporanItem: Laporan) => {
+        setSelectedLaporan(laporanItem);
+        setShowDisposisiModal(true);
+    };
 
-    // Render empty state
-    const renderEmptyState = useCallback((): JSX.Element => (
-        <View style={styles.centered}>
-            <Text variant="headlineSmall" style={[styles.emptyTitle, { color: theme.colors.onSurfaceVariant }]}>
-                Tidak ada laporan
-            </Text>
-            <Text style={[styles.emptySubtitle, { color: theme.colors.onSurfaceVariant }]}>
-                Semua laporan sudah diproses.
-            </Text>
-            <Button
-                mode="outlined"
-                onPress={onRefresh}
-                style={styles.refreshButton}
-                icon="refresh"
-            >
-                Muat Ulang
-            </Button>
-        </View>
-    ), [theme.colors, onRefresh]);
+    const closeDisposisiModal = () => {
+        setShowDisposisiModal(false);
+        setSelectedLaporan(null);
+    };
 
-    // Loading state
+    const formatDate = (dateString: string) => {
+        const date = new Date(dateString);
+        return date.toLocaleDateString('id-ID', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    };
+
+    const getCategoryInfo = (kategori: string) => {
+        return categories[kategori as keyof typeof categories] || categories.lainnya;
+    };
+
+    const getInitials = (name: string) => {
+        return name
+            .split(' ')
+            .map(word => word.charAt(0))
+            .join('')
+            .substring(0, 2)
+            .toUpperCase();
+    };
+
     if (loading) {
         return (
-            <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-                <Appbar.Header>
-                    <Appbar.BackAction onPress={() => router.back()} />
-                    <Appbar.Content title="Disposisi Laporan" titleStyle={styles.appbarTitle} />
-                </Appbar.Header>
-                <View style={styles.centered}>
-                    <ActivityIndicator animating size="large" />
-                    <Text style={{ marginTop: 16, color: theme.colors.onSurfaceVariant }}>
-                        Memuat data...
-                    </Text>
-                </View>
+            <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={theme.colors.primary} />
+                <Text style={styles.loadingText}>Memuat data laporan...</Text>
             </View>
         );
     }
 
     return (
-        <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-            <Appbar.Header>
-                <Appbar.BackAction onPress={() => router.back()} />
-                <Appbar.Content title="Disposisi Laporan" titleStyle={styles.appbarTitle} />
-                <Appbar.Action icon="refresh" onPress={onRefresh} />
-            </Appbar.Header>
+        <View style={styles.container}>
+            {/* Header with Gradient */}
+            <LinearGradient
+                colors={[theme.colors.gradientStart, theme.colors.gradientEnd]}
+                style={styles.headerGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+            >
+                <View style={styles.headerContent}>
+                    <View style={styles.headerTop}>
+                        <IconButton
+                            icon="arrow-left"
+                            size={24}
+                            iconColor="white"
+                            onPress={() => router.back()}
+                            style={styles.backButton}
+                        />
+                        <Text style={styles.headerTitle}>Disposisi Laporan</Text>
+                        <IconButton
+                            icon="history"
+                            size={24}
+                            iconColor="white"
+                            onPress={() => router.push('/(app)/(kabbag-umum)/riwayat_disposisi')}
+                        />
+                    </View>
+                    <Text style={styles.headerSubtitle}>
+                        Kelola dan disposisikan laporan yang masuk
+                    </Text>
+                    <View style={styles.headerStats}>
+                        <Text style={styles.statsText}>
+                            {laporan.length} laporan menunggu disposisi
+                        </Text>
+                    </View>
+                </View>
+            </LinearGradient>
 
-            <FlatList
-                data={laporanList}
-                keyExtractor={(item) => item.id_laporan.toString()}
-                renderItem={renderLaporanItem}
-                contentContainerStyle={[
-                    styles.listContent,
-                    laporanList.length === 0 && styles.emptyListContent
-                ]}
+            <ScrollView
+                style={styles.scrollView}
+                contentContainerStyle={styles.scrollContent}
+                showsVerticalScrollIndicator={false}
                 refreshControl={
                     <RefreshControl
                         refreshing={refreshing}
                         onRefresh={onRefresh}
                         colors={[theme.colors.primary]}
+                        tintColor={theme.colors.primary}
                     />
                 }
-                ListEmptyComponent={renderEmptyState}
-                showsVerticalScrollIndicator={false}
-            />
-
-            {/* Disposisi Dialog */}
-            <Portal>
-                <Dialog
-                    visible={isDialogVisible}
-                    onDismiss={closeDialog}
-                    style={styles.dialog}
-                >
-                    <Dialog.Title style={styles.dialogTitle}>
-                        {selectedLaporan?.judul_laporan}
-                    </Dialog.Title>
-                    <Dialog.ScrollArea>
-                        <Dialog.Content>
-                            <Text variant="bodyMedium" style={styles.dialogText}>
-                                <Text style={styles.boldText}>Pelapor:</Text> {selectedLaporan?.pelapor}
-                            </Text>
-                            <Text variant="bodyMedium" style={styles.dialogText}>
-                                <Text style={styles.boldText}>Waktu:</Text>{' '}
-                                {selectedLaporan ? formatDate(selectedLaporan.created_at) : ''}
-                            </Text>
-                            {selectedLaporan?.kategori && (
-                                <Text variant="bodyMedium" style={styles.dialogText}>
-                                    <Text style={styles.boldText}>Kategori:</Text> {selectedLaporan.kategori}
-                                </Text>
-                            )}
-
-                            <Text variant="bodyMedium" style={[styles.dialogText, styles.isiLaporanText]}>
-                                <Text style={styles.boldText}>Isi Laporan:</Text>
-                            </Text>
-                            <Text variant="bodyMedium" style={styles.isiLaporanContent}>
-                                {selectedLaporan?.isi_laporan}
-                            </Text>
-
-                            <Divider style={styles.divider} />
-
-                            {/* Dropdown Penanggung Jawab */}
-                            <Text variant="titleSmall" style={[styles.boldText, styles.sectionTitle]}>
-                                Pilih Penanggung Jawab
-                            </Text>
-                            <Menu
-                                visible={menuVisible}
-                                onDismiss={() => setMenuVisible(false)}
-                                anchor={
-                                    <Button
-                                        mode="outlined"
-                                        onPress={() => setMenuVisible(true)}
-                                        icon="account-arrow-down"
-                                        style={styles.menuButton}
-                                        contentStyle={styles.menuButtonContent}
-                                    >
-                                        {selectedSubbag ? selectedSubbag.nama : 'Pilih Penanggung Jawab'}
-                                    </Button>
-                                }
-                                contentStyle={styles.menuContent}
-                            >
-                                {subbagList.map((subbag) => (
-                                    <Menu.Item
-                                        key={subbag.nik}
-                                        onPress={() => {
-                                            setSelectedSubbag(subbag);
-                                            setMenuVisible(false);
-                                            setFormError('');
-                                        }}
-                                        title={subbag.nama}
-                                        titleStyle={styles.menuItemTitle}
-                                    />
-                                ))}
-                            </Menu>
-
-                            {/* Catatan Input */}
-                            <TextInput
-                                label="Catatan Disposisi (Opsional)"
-                                value={catatan}
-                                onChangeText={(text) => {
-                                    setCatatan(text);
-                                    setFormError('');
-                                }}
-                                mode="outlined"
-                                multiline
-                                numberOfLines={3}
-                                style={styles.catatanInput}
-                                maxLength={500}
-                                right={<TextInput.Affix text={`${catatan.length}/500`} />}
-                            />
-
-                            {formError ? (
-                                <HelperText type="error" visible={!!formError}>
-                                    {formError}
-                                </HelperText>
-                            ) : null}
-                        </Dialog.Content>
-                    </Dialog.ScrollArea>
-
-                    <Dialog.Actions style={styles.dialogActions}>
-                        <Button
-                            onPress={() => handleDisposisi(false)}
-                            textColor={theme.colors.error}
-                            disabled={isSubmitting}
-                            style={styles.rejectButton}
-                        >
-                            Tolak
-                        </Button>
-                        <Button
-                            onPress={() => handleDisposisi(true)}
-                            disabled={isSubmitting}
-                            loading={isSubmitting}
-                            mode="contained"
-                            style={styles.approveButton}
-                        >
-                            Setujui
-                        </Button>
-                    </Dialog.Actions>
-                </Dialog>
-            </Portal>
-
-            {/* Snackbar */}
-            <Snackbar
-                visible={snackbar.visible}
-                onDismiss={() => setSnackbar(prev => ({ ...prev, visible: false }))}
-                duration={4000}
-                style={[
-                    styles.snackbar,
-                    snackbar.type === 'error' && { backgroundColor: theme.colors.errorContainer },
-                    snackbar.type === 'success' && { backgroundColor: theme.colors.primaryContainer },
-                ]}
             >
-                {snackbar.message}
-            </Snackbar>
+                {laporan.length === 0 ? (
+                    <Card style={styles.emptyCard} elevation={2}>
+                        <Card.Content style={styles.emptyContent}>
+                            <IconButton
+                                icon="clipboard-check"
+                                size={64}
+                                iconColor={theme.colors.onSurfaceVariant}
+                            />
+                            <Text style={styles.emptyTitle}>Tidak Ada Laporan</Text>
+                            <Text style={styles.emptyText}>
+                                Saat ini tidak ada laporan yang menunggu disposisi
+                            </Text>
+                        </Card.Content>
+                    </Card>
+                ) : (
+                    laporan.map((item) => {
+                        const categoryInfo = getCategoryInfo(item.kategori || 'lainnya');
+                        return (
+                            <Card key={item.id_laporan} style={styles.laporanCard} elevation={3}>
+                                <Card.Content style={styles.laporanContent}>
+                                    {/* Header Laporan */}
+                                    <View style={styles.laporanHeader}>
+                                        <View style={styles.laporanInfo}>
+                                            <View style={styles.categoryChip}>
+                                                <IconButton
+                                                    icon={categoryInfo.icon}
+                                                    size={16}
+                                                    iconColor={categoryInfo.color}
+                                                    style={styles.categoryIcon}
+                                                />
+                                                <Text style={[styles.categoryText, { color: categoryInfo.color }]}>
+                                                    {categoryInfo.label}
+                                                </Text>
+                                            </View>
+                                            <Text style={styles.dateText}>
+                                                {formatDate(item.created_at)}
+                                            </Text>
+                                        </View>
+                                        <Chip
+                                            mode="flat"
+                                            style={[styles.statusChip, { backgroundColor: theme.colors.warning + '20' }]}
+                                            textStyle={[styles.statusText, { color: theme.colors.warning }]}
+                                        >
+                                            Menunggu
+                                        </Chip>
+                                    </View>
+
+                                    {/* Judul Laporan */}
+                                    <Text style={styles.judulLaporan} numberOfLines={2}>
+                                        {item.judul_laporan}
+                                    </Text>
+
+                                    {/* Isi Laporan */}
+                                    <Text style={styles.isiLaporan} numberOfLines={3}>
+                                        {item.isi_laporan}
+                                    </Text>
+
+                                    {/* Pelapor Info */}
+                                    <View style={styles.pelaporInfo}>
+                                        <Avatar.Text
+                                            size={32}
+                                            label={getInitials(item.pelapor)}
+                                            style={styles.pelaporAvatar}
+                                            labelStyle={styles.pelaporAvatarLabel}
+                                        />
+                                        <View style={styles.pelaporDetails}>
+                                            <Text style={styles.pelaporNama}>{item.pelapor}</Text>
+                                            <Text style={styles.pelaporNik}>NIK: {item.nik_pelapor}</Text>
+                                        </View>
+                                    </View>
+
+                                    {/* Action Buttons */}
+                                    <View style={styles.actionButtons}>
+                                        <Button
+                                            mode="contained"
+                                            onPress={() => openDisposisiModal(item)}
+                                            style={styles.disposisiButton}
+                                            contentStyle={styles.buttonContent}
+                                            buttonColor={theme.colors.primary}
+                                        >
+                                            Disposisi
+                                        </Button>
+                                    </View>
+                                </Card.Content>
+                            </Card>
+                        );
+                    })
+                )}
+            </ScrollView>
+
+            <DisposisiDialog
+                visible={showDisposisiModal}
+                onDismiss={closeDisposisiModal}
+                laporan={selectedLaporan}
+                subbagUsers={subbagUsers}
+                onSuccess={() => {
+                    closeDisposisiModal();
+                    loadLaporanDisposisi();
+                }}
+            />
         </View>
     );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: any) => StyleSheet.create({
     container: {
         flex: 1,
+        backgroundColor: theme.colors.background,
     },
-    centered: {
+    loadingContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        padding: 20,
+        backgroundColor: theme.colors.background,
+        gap: 16,
     },
-    listContent: {
-        padding: 16,
-        paddingBottom: 80,
+    loadingText: {
+        fontSize: 16,
+        color: theme.colors.onSurfaceVariant,
     },
-    emptyListContent: {
-        flexGrow: 1,
+
+    // Header Styles
+    headerGradient: {
+        paddingTop: 60,
+        paddingBottom: 24,
+        paddingHorizontal: 20,
     },
-    card: {
-        marginBottom: 12,
-        elevation: 2,
+    headerContent: {
+        gap: 12,
     },
-    cardTitle: {
-        fontFamily: 'RubikBold',
+    headerTop: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
     },
-    statusChip: {
-        marginRight: 8,
+    backButton: {
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        margin: 0,
+    },
+    headerTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: 'white',
+        flex: 1,
+        textAlign: 'center',
+    },
+    placeholder: {
+        width: 40,
+    },
+    headerSubtitle: {
+        fontSize: 14,
+        color: 'rgba(255, 255, 255, 0.8)',
+        textAlign: 'center',
+    },
+    headerStats: {
+        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+        borderRadius: 12,
+        paddingVertical: 8,
+        paddingHorizontal: 16,
+        alignSelf: 'center',
         marginTop: 8,
     },
-    categoryChip: {
-        alignSelf: 'flex-start',
-        marginTop: 8,
+    statsText: {
+        color: 'white',
+        fontSize: 12,
+        fontWeight: '500',
     },
-    dateText: {
-        marginTop: 4,
+
+    // Scroll Styles
+    scrollView: {
+        flex: 1,
     },
-    appbarTitle: {
-        fontFamily: 'RubikBold',
+    scrollContent: {
+        paddingHorizontal: 16,
+        paddingTop: 16,
+        paddingBottom: 100,
+    },
+
+    // Empty State
+    emptyCard: {
+        backgroundColor: theme.colors.surface,
+        borderRadius: 16,
+        marginTop: 40,
+    },
+    emptyContent: {
+        alignItems: 'center',
+        padding: 40,
     },
     emptyTitle: {
-        fontFamily: 'RubikBold',
-        textAlign: 'center',
-    },
-    emptySubtitle: {
-        textAlign: 'center',
-        marginTop: 8,
-    },
-    refreshButton: {
-        marginTop: 16,
-    },
-    dialog: {
-        maxHeight: '80%',
-    },
-    dialogTitle: {
-        fontFamily: 'RubikBold',
         fontSize: 18,
+        fontWeight: 'bold',
+        color: theme.colors.onSurface,
+        marginTop: 16,
+        marginBottom: 8,
     },
-    dialogText: {
-        marginBottom: 6,
+    emptyText: {
+        fontSize: 14,
+        color: theme.colors.onSurfaceVariant,
+        textAlign: 'center',
         lineHeight: 20,
     },
-    boldText: {
-        fontFamily: 'RubikBold',
+
+    // Laporan Card Styles
+    laporanCard: {
+        backgroundColor: theme.colors.surface,
+        borderRadius: 16,
+        marginBottom: 16,
     },
-    isiLaporanText: {
-        marginTop: 12,
+    laporanContent: {
+        padding: 20,
     },
-    isiLaporanContent: {
-        marginTop: 4,
+    laporanHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        marginBottom: 12,
+    },
+    laporanInfo: {
+        flex: 1,
+        gap: 4,
+    },
+    categoryChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: theme.colors.primaryContainer,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 12,
+        alignSelf: 'flex-start',
+    },
+    categoryIcon: {
+        margin: 0,
+        marginRight: 4,
+    },
+    categoryText: {
+        fontSize: 12,
+        fontWeight: '600',
+    },
+    dateText: {
+        fontSize: 12,
+        color: theme.colors.onSurfaceVariant,
+    },
+    statusChip: {
+        height: 28,
+    },
+    statusText: {
+        fontSize: 12,
+        fontWeight: '600',
+    },
+    judulLaporan: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: theme.colors.onSurface,
         marginBottom: 8,
         lineHeight: 22,
-        backgroundColor: 'rgba(0,0,0,0.05)',
-        padding: 12,
-        borderRadius: 8,
     },
-    sectionTitle: {
-        marginBottom: 8,
-    },
-    divider: {
-        marginVertical: 16,
-    },
-    menuButton: {
+    isiLaporan: {
+        fontSize: 14,
+        color: theme.colors.onSurfaceVariant,
+        lineHeight: 20,
         marginBottom: 16,
     },
-    menuButtonContent: {
-        height: 48,
-    },
-    menuContent: {
-        minWidth: 200,
-    },
-    menuItemTitle: {
-        fontSize: 16,
-    },
-    catatanInput: {
-        marginBottom: 8,
-    },
-    dialogActions: {
-        paddingHorizontal: 24,
-        paddingVertical: 16,
-    },
-    rejectButton: {
-        marginRight: 8,
-    },
-    approveButton: {
-        minWidth: 100,
-    },
-    snackbar: {
+    pelaporInfo: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
         marginBottom: 16,
-        marginHorizontal: 16,
+    },
+    pelaporAvatar: {
+        backgroundColor: theme.colors.primary,
+    },
+    pelaporAvatarLabel: {
+        fontSize: 12,
+        fontWeight: 'bold',
+    },
+    pelaporDetails: {
+        flex: 1,
+    },
+    pelaporNama: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: theme.colors.onSurface,
+    },
+    pelaporNik: {
+        fontSize: 12,
+        color: theme.colors.onSurfaceVariant,
+    },
+    actionButtons: {
+        flexDirection: 'row',
+        gap: 12,
+    },
+    disposisiButton: {
+        flex: 1,
+        borderRadius: 12,
+    },
+    buttonContent: {
+        paddingVertical: 6,
     },
 });

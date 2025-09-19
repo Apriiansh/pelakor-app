@@ -10,7 +10,7 @@ import { ThemeSettings } from '@/components/ThemeSettings';
 const API_URL = `${process.env.EXPO_PUBLIC_API_URL}`;
 
 export default function ProfilKabbagUmum() {
-    const [user, setUser] = useState<{ nama: string; nik: string; email: string; role: string } | null>(null);
+    const [user, setUser] = useState<{ nama: string; nik: string; email: string; jabatan: String; role: string } | null>(null);
     const [loading, setLoading] = useState(true);
     const [themeModalVisible, setThemeModalVisible] = useState(false);
     const router = useRouter();
@@ -26,7 +26,7 @@ export default function ProfilKabbagUmum() {
                     return;
                 }
 
-                const response = await fetch(`${API_URL}/users/me`, {
+                const response = await fetch(`${API_URL}/api/users/me`, {
                     headers: {
                         'Authorization': `Bearer ${token}`,
                     },
@@ -138,8 +138,8 @@ export default function ProfilKabbagUmum() {
                     <Text style={[styles.name, { color: theme.colors.onSurface }]}>
                         {user?.nama || '-'}
                     </Text>
-                    <Text style={[styles.role, { color: theme.colors.primary }]}>
-                        {user?.role || '-'}
+                    <Text style={[styles.jabatan, { color: theme.colors.primary }]}>
+                        {user?.jabatan || '-'}
                     </Text>
                 </View>
 
@@ -155,8 +155,8 @@ export default function ProfilKabbagUmum() {
                             <Text style={[styles.value, { color: theme.colors.onSurface }]}>{user?.email || '-'}</Text>
                         </View>
                         <View style={[styles.infoRowLast, { borderBottomColor: theme.colors.outlineVariant }]}>
-                            <Text style={[styles.label, { color: theme.colors.onSurfaceVariant }]}>Role</Text>
-                            <Text style={[styles.value, { color: theme.colors.onSurface }]}>{user?.role || '-'}</Text>
+                            <Text style={[styles.label, { color: theme.colors.onSurfaceVariant }]}>Jabatan</Text>
+                            <Text style={[styles.value, { color: theme.colors.onSurface }]}>{user?.jabatan || '-'}</Text>
                         </View>
                     </Card.Content>
                 </Card>
@@ -277,7 +277,7 @@ const styles = StyleSheet.create({
         marginBottom: 4,
         fontFamily: 'RubikBold',
     },
-    role: {
+    jabatan: {
         fontSize: 15,
         fontWeight: '500',
         marginBottom: 12,
