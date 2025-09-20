@@ -64,7 +64,10 @@ export default function LoginScreen() {
             if (response.ok) {
                 await AsyncStorage.setItem('userToken', data.token);
                 await AsyncStorage.setItem('userData', JSON.stringify(data.user));
-                await AsyncStorage.setItem('userRole', data.user.role); // Simpan role
+                await AsyncStorage.setItem('userRole', data.user.role);
+
+
+                const jabatan = data.user.jabatan;
 
                 // Tentukan rute berdasarkan peran
                 const role = data.user.role;
@@ -77,7 +80,7 @@ export default function LoginScreen() {
 
                 Alert.alert(
                     '✅ Login Berhasil',
-                    `Selamat datang, ${data.user?.nama || 'User'}! Anda masuk sebagai ${role}`,
+                    `Selamat datang, ${data.user?.nama || 'User'}! Anda masuk sebagai ${jabatan || role}`,
                     [{ 
                         text: 'Lanjutkan',
                         style: 'default',

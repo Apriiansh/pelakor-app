@@ -12,6 +12,7 @@ import {
     Divider,
 } from 'react-native-paper';
 import * as DocumentPicker from 'expo-document-picker';
+import * as ImagePicker from 'expo-image-picker';
 import { Laporan, ApiError, getTindakLanjutHistory } from '@/utils/api';
 import { useAppTheme } from '@/context/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -46,12 +47,13 @@ export function TindakLanjutDialog({ visible, onDismiss, laporan, onSuccess }: T
     const [activeTab, setActiveTab] = useState<'form' | 'history'>('form');
     const [catatan, setCatatan] = useState('');
     const [statusTindakLanjut, setStatusTindakLanjut] = useState('ditindaklanjuti');
-    const [lampiran, setLampiran] = useState<DocumentPicker.DocumentPickerAsset | null>(null);
+    const [lampiran, setLampiran] = useState<DocumentPicker.DocumentPickerAsset | ImagePicker.ImagePickerAsset | null>(null);
     const [loading, setLoading] = useState(false);
     const [history, setHistory] = useState<TindakLanjutHistoryItem[]>([]);
     const [historyLoading, setHistoryLoading] = useState(false);
 
     const statusOptions = [
+        { value: 'ditolak', label: 'Tolak Laporan', icon: 'close-circle', color: theme.colors.error },
         { value: 'ditindaklanjuti', label: 'Sedang Ditindaklanjuti', icon: 'progress-check', color: theme.colors.backdrop },
         { value: 'selesai', label: 'Selesai Ditangani', icon: 'check-circle', color: theme.colors.success },
     ];
@@ -104,10 +106,10 @@ export function TindakLanjutDialog({ visible, onDismiss, laporan, onSuccess }: T
         });
     };
 
-    const pickDocument = async () => {
+    const pickFileFromDevice = async () => {
         try {
             const result = await DocumentPicker.getDocumentAsync({
-                type: '*/*',
+                type: ['image/*', 'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
                 copyToCacheDirectory: true,
             });
 
@@ -120,9 +122,44 @@ export function TindakLanjutDialog({ visible, onDismiss, laporan, onSuccess }: T
         }
     };
 
+    const pickCamera = async () => {
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+        if (status !== 'granted') {
+            Alert.alert('Izin ditolak', 'Akses kamera dibutuhkan untuk ambil foto.');
+            return;
+        }
+        const result = await ImagePicker.launchCameraAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            quality: 0.8,
+        });
+        if (!result.canceled && result.assets[0]) {
+            setLampiran(result.assets[0]);
+        }
+    };
+
     const removeLampiran = () => {
         setLampiran(null);
     };
+
+    const getLampiranName = () => {
+        if (!lampiran) return '';
+        if ('fileName' in lampiran && lampiran.fileName) return lampiran.fileName;
+        if ('name' in lampiran) return lampiran.name;
+        return 'file';
+    }
+    
+    const getLampiranSize = () => {
+        if (!lampiran) return '';
+        let size = 0;
+        if ('fileSize' in lampiran && lampiran.fileSize) { // ImagePickerAsset
+            size = lampiran.fileSize;
+        } else if ('size' in lampiran && lampiran.size) { // DocumentPickerAsset
+            size = lampiran.size;
+        }
+        
+        if (size === 0) return '';
+        return `${Math.round(size / 1024)} KB`;
+    }
 
     const handleSubmit = async () => {
         if (!laporan) return;
@@ -142,19 +179,20 @@ export function TindakLanjutDialog({ visible, onDismiss, laporan, onSuccess }: T
             }
 
             const formData = new FormData();
-            formData.append('catatan', catatan.trim());
+            formData.append('catatan_tindak_lanjut', catatan.trim());
             formData.append('status', statusTindakLanjut);
 
             if (lampiran && lampiran.uri) {
+                const name = getLampiranName();
                 formData.append('lampiran', {
                     uri: lampiran.uri,
-                    name: lampiran.name,
+                    name: name,
                     type: lampiran.mimeType || 'application/octet-stream',
                 } as any);
             }
             
             const API_URL = process.env.EXPO_PUBLIC_API_URL;
-            const response = await fetch(`${API_URL}/api/laporan/${laporan.id_laporan}/tindak-lanjut`, {
+            const response = await fetch(`${API_URL}/api/tindaklanjut/${laporan.id_laporan}`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -327,14 +365,21 @@ export function TindakLanjutDialog({ visible, onDismiss, laporan, onSuccess }: T
                                         </Text>
 
                                         {!lampiran ? (
-                                            <Button
-                                                mode="outlined"
-                                                onPress={pickDocument}
-                                                style={styles.uploadButton}
-                                                icon="paperclip"
-                                            >
-                                                Pilih File
-                                            </Button>
+                                            <View style={styles.attachmentOptions}>
+                                                <TouchableOpacity style={styles.attachmentButton} onPress={pickCamera}>
+                                                    <View style={[styles.attachmentIconContainer, { backgroundColor: theme.colors.primaryContainer }]}>
+                                                        <IconButton icon="camera" size={24} iconColor={theme.colors.primary} />
+                                                    </View>
+                                                    <Text style={styles.attachmentLabel}>Kamera</Text>
+                                                </TouchableOpacity>
+
+                                                <TouchableOpacity style={styles.attachmentButton} onPress={pickFileFromDevice}>
+                                                    <View style={[styles.attachmentIconContainer, { backgroundColor: theme.colors.secondaryContainer }]}>
+                                                        <IconButton icon="paperclip" size={24} iconColor={theme.colors.secondary} />
+                                                    </View>
+                                                    <Text style={styles.attachmentLabel}>Upload</Text>
+                                                </TouchableOpacity>
+                                            </View>
                                         ) : (
                                             <View style={styles.filePreview}>
                                                 <View style={styles.fileInfo}>
@@ -345,10 +390,10 @@ export function TindakLanjutDialog({ visible, onDismiss, laporan, onSuccess }: T
                                                     />
                                                     <View style={styles.fileDetails}>
                                                         <Text style={styles.fileName} numberOfLines={1}>
-                                                            {lampiran.name}
+                                                            {getLampiranName()}
                                                         </Text>
                                                         <Text style={styles.fileSize}>
-                                                            {lampiran.size ? `${Math.round(lampiran.size / 1024)} KB` : ''}
+                                                            {getLampiranSize()}
                                                         </Text>
                                                     </View>
                                                 </View>
@@ -456,7 +501,7 @@ export function TindakLanjutDialog({ visible, onDismiss, laporan, onSuccess }: T
                                                         </View>
                                                     )}
                                                 </View>
-                                                {index < history.length - 1 && <Divider style={styles.historyDivider} />}
+                                                {index < history.length - 1 && <Divider style={styles.historyDivider} />} 
                                             </View>
                                         ))
                                     )}
@@ -631,11 +676,29 @@ const createStyles = (theme: any) => StyleSheet.create({
         textAlign: 'right',
         marginTop: 4,
     },
-    uploadButton: {
-        borderColor: theme.colors.primary,
-        borderStyle: 'dashed',
-        borderWidth: 2,
-        paddingVertical: 8,
+    attachmentOptions: {
+        flexDirection: 'row',
+        gap: 16,
+        justifyContent: 'space-evenly',
+        marginBottom: 16,
+    },
+    attachmentButton: {
+        alignItems: 'center',
+        gap: 8,
+        flex: 1,
+    },
+    attachmentIconContainer: {
+        borderRadius: 16,
+        padding: 12,
+        borderWidth: 1,
+        borderColor: theme.colors.outline,
+        alignItems: 'center',
+        width: '100%',
+    },
+    attachmentLabel: {
+        fontSize: 12,
+        fontWeight: '500',
+        color: theme.colors.onSurfaceVariant,
     },
     filePreview: {
         flexDirection: 'row',

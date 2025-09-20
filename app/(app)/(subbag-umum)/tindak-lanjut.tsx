@@ -303,9 +303,17 @@ function LaporanCard({
     getPriorityLevel,
     onTindakLanjut
 }: LaporanCardProps) {
+    const router = useRouter();
     const categoryInfo = getCategoryInfo(item.kategori || 'lainnya');
     const statusInfo = getStatusInfo(item.status_laporan);
     const priority = getPriorityLevel(item.created_at);
+
+    const getChipBackgroundColor = (color: string) => {
+        if (color.startsWith('rgba')) {
+            return color;
+        }
+        return color + '20';
+    };
 
     return (
         <Card style={styles.laporanCard} elevation={3}>
@@ -331,7 +339,7 @@ function LaporanCard({
                     <View style={styles.headerChips}>
                         <Chip
                             mode="flat"
-                            style={[styles.statusChip, { backgroundColor: statusInfo.color + '20' }]}
+                            style={[styles.statusChip, { backgroundColor: getChipBackgroundColor(statusInfo.color) }]}
                             textStyle={[styles.statusText, { color: statusInfo.color }]}
                             icon={statusInfo.icon}
                         >
@@ -340,7 +348,7 @@ function LaporanCard({
                         {priority.level !== 'normal' && (
                             <Chip
                                 mode="flat"
-                                style={[styles.priorityChip, { backgroundColor: priority.color + '20' }]}
+                                style={[styles.priorityChip, { backgroundColor: getChipBackgroundColor(priority.color) }]}
                                 textStyle={[styles.priorityText, { color: priority.color }]}
                                 icon="flag"
                             >

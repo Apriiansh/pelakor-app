@@ -87,6 +87,12 @@ export default function PegawaiLayout() {
           ),
         }}
       />
+      <Tabs.Screen
+              name="riwayat_tindak_lanjut"
+              options={{
+                href: null,
+              }}
+            />
     </Tabs>
   );
 }
