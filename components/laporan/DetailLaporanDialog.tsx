@@ -168,12 +168,12 @@ export const DetailLaporanDialog = ({
                                                         {formatDate(item.created_at)}
                                                     </Text>
                                                     <Text variant="bodyMedium" style={styles.historyText}>
-                                                        <Text style={styles.boldText}>{item.kabbag}</Text>
+                                                        <Text style={styles.boldText}>{item.kabbag_umum}</Text>
                                                         {item.penanggung_jawab && ` → ${item.penanggung_jawab}`}
                                                     </Text>
-                                                    {item.catatan && (
+                                                    {item.catatan_disposisi && (
                                                         <Text variant="bodySmall" style={styles.historyCatatan}>
-                                                            {item.catatan}
+                                                            {item.catatan_disposisi}
                                                         </Text>
                                                     )}
                                                 </Surface>
@@ -198,9 +198,9 @@ export const DetailLaporanDialog = ({
                                                     <Text variant="bodyMedium" style={styles.historyText}>
                                                         <Text style={styles.boldText}>{item.penindak}</Text>
                                                     </Text>
-                                                    {item.catatan && (
+                                                    {item.catatan_tindak_lanjut && (
                                                         <Text variant="bodySmall" style={styles.historyCatatan}>
-                                                            {item.catatan}
+                                                            {item.catatan_tindak_lanjut}
                                                         </Text>
                                                     )}
                                                     {item.lampiran && (

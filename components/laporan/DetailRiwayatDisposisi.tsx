@@ -166,14 +166,12 @@ export const DetailDisposisiDialog = ({
                                                         {formatDate(item.created_at)}
                                                     </Text>
                                                     <Text variant="bodyMedium" style={styles.historyText}>
-                                                        <Text style={styles.boldText}>{item.kabbag}</Text>
+                                                        <Text style={styles.boldText}>{item.kabbag_umum}</Text>
                                                         {item.penanggung_jawab && ` → ${item.penanggung_jawab}`}
                                                     </Text>
-                                                    {item.catatan_disposisi  && (
-                                                        <Text variant="bodySmall" style={styles.historyCatatan}>
-                                                            {item.catatan_disposisi}
-                                                        </Text>
-                                                    )}
+                                                    <Text variant="bodyMedium" style={styles.historyCatatan}>
+                                                        <Text style={styles.dialog}>Catatan Kabbag Umum: {item.catatan_disposisi}</Text>
+                                                    </Text>
                                                 </Surface>
                                             ))}
                                         </View>
@@ -196,9 +194,9 @@ export const DetailDisposisiDialog = ({
                                                     <Text variant="bodyMedium" style={styles.historyText}>
                                                         <Text style={styles.boldText}>{item.penindak}</Text>
                                                     </Text>
-                                                    {item.catatan && (
+                                                    {item.catatan_tindak_lanjut && (
                                                         <Text variant="bodySmall" style={styles.historyCatatan}>
-                                                            {item.catatan}
+                                                            {item.catatan_tindak_lanjut}
                                                         </Text>
                                                     )}
                                                     {item.lampiran && (
@@ -234,7 +232,7 @@ const styles = StyleSheet.create({
     historyItem: { padding: 12, marginBottom: 8, borderRadius: 8 },
     historyDate: { opacity: 0.6, marginBottom: 4 },
     historyText: { marginBottom: 4 },
-    historyCatatan: { opacity: 0.8, fontStyle: 'italic', lineHeight: 18 },
+    historyCatatan: { fontStyle: 'normal', lineHeight: 18 },
     dialogActions: { paddingHorizontal: 24, paddingVertical: 16 },
     lampiranImage: {
         width: '100%',

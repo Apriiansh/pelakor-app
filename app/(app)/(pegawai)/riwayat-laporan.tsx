@@ -357,13 +357,6 @@ export default function RiwayatLaporanScreen(): JSX.Element {
                 showsVerticalScrollIndicator={false}
             />
 
-            <FAB
-                icon="plus"
-                style={[styles.fab, { backgroundColor: theme.colors.primary }]}
-                onPress={() => router.push('/(app)/(pegawai)/buat-laporan')}
-                label="Buat Laporan"
-            />
-
             {selectedLaporan && (
                 <DetailLaporanDialog
                     visible={isDetailVisible}
@@ -431,6 +424,5 @@ const styles = StyleSheet.create({
     emptyTitle: { fontFamily: 'RubikBold', textAlign: 'center', marginBottom: 8 },
     emptySubtitle: { textAlign: 'center', lineHeight: 20 },
     createButton: { marginTop: 24 },
-    fab: { position: 'absolute', margin: 16, right: 0, bottom: 0 },
     snackbar: { marginBottom: 16, marginHorizontal: 16 },
 });

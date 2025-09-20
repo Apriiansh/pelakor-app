@@ -180,6 +180,8 @@ export const getTindakLanjut = () => {
     return apiFetch('/api/tindaklanjut');
 };
 
+// Add these updated functions to your utils/api.ts file
+
 /**
  * POST /api/tindaklanjut/:laporan_id
  * Tambahkan catatan tindak lanjut dengan lampiran opsional
@@ -205,6 +207,54 @@ export const postTindakLanjut = (laporan_id: string, data: {
         body: formData,
     });
 };
+
+/**
+ * PUT /api/tindaklanjut/:id_tindak_lanjut
+ * Update catatan tindak lanjut
+ */
+export const updateTindakLanjut = (id_tindak_lanjut: string, data: {
+    catatan?: string;
+    status?: string;
+    lampiran?: File | null;
+}) => {
+    const formData = new FormData();
+    if (data.catatan !== undefined) {
+        formData.append('catatan', data.catatan);
+    }
+    if (data.status !== undefined) {
+        formData.append('status', data.status);
+    }
+    if (data.lampiran) {
+        formData.append('lampiran', data.lampiran);
+    }
+
+    return apiFetch(`/api/tindaklanjut/${id_tindak_lanjut}`, {
+        method: 'PUT',
+        body: formData,
+    });
+};
+
+/**
+ * DELETE /api/tindaklanjut/:id_tindak_lanjut
+ * Hapus catatan tindak lanjut
+ */
+export const deleteTindakLanjut = (id_tindak_lanjut: string) => {
+    return apiFetch(`/api/tindaklanjut/${id_tindak_lanjut}`, {
+        method: 'DELETE',
+    });
+};
+
+// Update the existing interface
+export interface TindakLanjutHistory {
+    id_tindak_lanjut: number;
+    catatan_tindak_lanjut?: string;
+    status_tindak_lanjut: string;
+    lampiran?: string;
+    created_at: string;
+    updated_at?: string;
+    penindak: string;
+    jabatan: string;
+}
 
 /**
  * GET /api/tindaklanjut/:laporan_id
@@ -247,18 +297,9 @@ export interface DisposisiHistory {
     id: number;
     status_disposisi: string;
     catatan_disposisi: string;
-    kabbag: string;
+    kabbag_umum: string;
     created_at: string;
     penanggung_jawab?: string;
-}
-
-export interface TindakLanjutHistory {
-    id: number;
-    catatan?: string;
-    lampiran?: string;
-    status_tindaklanjut: string;
-    created_at: string;
-    penindak: string;
 }
 
 // --- USER ENDPOINTS ---
@@ -296,8 +337,8 @@ export const getSubbagUmum = () => {
  * GET /api/users/kabbag
  * Ambil daftar kabbag
  */
-export const getKabbagUsers = () => {
-    return apiFetch('/api/users/kabbag');
+export const getKabbagUmum = () => {
+    return apiFetch('/api/users/kabbag-umum');
 };
 
 /**
