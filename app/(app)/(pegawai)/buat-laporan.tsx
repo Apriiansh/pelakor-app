@@ -38,18 +38,24 @@ export default function BuatLaporanScreen() {
         }
     }, [params]);
 
-    const pickDocument = async () => {
+    const pickFile = async () => {
         try {
+            // Menggabungkan pemilihan gambar dan dokumen
             const result = await DocumentPicker.getDocumentAsync({
-                type: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+                type: [
+                    'image/*',
+                    'application/pdf',
+                    'application/msword',
+                    'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+                ],
                 copyToCacheDirectory: true,
             });
             if (!result.canceled) {
                 setLampiran(result.assets[0]);
             }
         } catch (error) {
-            console.error('Error picking document:', error);
-            Alert.alert('Error', 'Gagal memilih dokumen.');
+            console.error('Error picking file:', error);
+            Alert.alert('Error', 'Gagal memilih file.');
         }
     };
 
@@ -60,23 +66,6 @@ export default function BuatLaporanScreen() {
             return;
         }
         const result = await ImagePicker.launchCameraAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            quality: 0.8,
-            allowsEditing: true,
-            aspect: [4, 3],
-        });
-        if (!result.canceled) {
-            setLampiran(result.assets[0]);
-        }
-    };
-
-    const pickImage = async () => {
-        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (status !== 'granted') {
-            Alert.alert('Izin ditolak', 'Akses galeri dibutuhkan untuk pilih foto.');
-            return;
-        }
-        const result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
             quality: 0.8,
             allowsEditing: true,
@@ -280,8 +269,8 @@ export default function BuatLaporanScreen() {
         },
         attachmentOptions: {
             flexDirection: 'row',
-            gap: 16,
-            justifyContent: 'space-around',
+            gap: 32,
+            justifyContent: 'center',
             marginBottom: 16,
         },
         attachmentButton: {
@@ -527,21 +516,14 @@ export default function BuatLaporanScreen() {
                                     <View style={[styles.attachmentIconContainer, { backgroundColor: theme.colors.blueLight }]}>
                                         <IconButton icon="camera" size={24} iconColor={theme.colors.primary} />
                                     </View>
-                                    <Text style={styles.attachmentLabel}>Kamera</Text>
+                                    <Text style={styles.attachmentLabel}>Ambil Foto</Text>
                                 </TouchableOpacity>
 
-                                <TouchableOpacity style={styles.attachmentButton} onPress={pickImage}>
+                                <TouchableOpacity style={styles.attachmentButton} onPress={pickFile}>
                                     <View style={[styles.attachmentIconContainer, { backgroundColor: theme.colors.greenLight }]}>
-                                        <IconButton icon="image" size={24} iconColor={theme.colors.success} />
+                                        <IconButton icon="file-upload" size={24} iconColor={theme.colors.success} />
                                     </View>
-                                    <Text style={styles.attachmentLabel}>Galeri</Text>
-                                </TouchableOpacity>
-
-                                <TouchableOpacity style={styles.attachmentButton} onPress={pickDocument}>
-                                    <View style={[styles.attachmentIconContainer, { backgroundColor: theme.colors.amberLight }]}>
-                                        <IconButton icon="file-document" size={24} iconColor={theme.colors.warning} />
-                                    </View>
-                                    <Text style={styles.attachmentLabel}>Dokumen</Text>
+                                    <Text style={styles.attachmentLabel}>Upload File</Text>
                                 </TouchableOpacity>
                             </View>
 

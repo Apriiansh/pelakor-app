@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -7,7 +8,6 @@ import {
     Alert,
     Dimensions,
     KeyboardAvoidingView,
-    Platform,
     ScrollView,
     StyleSheet,
     View,
@@ -17,6 +17,51 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width, height } = Dimensions.get('window');
 
+// Storage abstraction for cross-platform compatibility
+const Storage = {
+    async setItem(key: string, value: string) {
+        if (Platform.OS === 'web') {
+            localStorage.setItem(key, value);
+        } else {
+            await AsyncStorage.setItem(key, value);
+        }
+    },
+
+    async getItem(key: string): Promise<string | null> {
+        if (Platform.OS === 'web') {
+            return localStorage.getItem(key);
+        } else {
+            return await AsyncStorage.getItem(key);
+        }
+    },
+
+    async removeItem(key: string) {
+        if (Platform.OS === 'web') {
+            localStorage.removeItem(key);
+        } else {
+            await AsyncStorage.removeItem(key);
+        }
+    }
+};
+
+// Cross-platform alert
+const showAlert = (title: string, message: string, onPress?: () => void) => {
+    if (Platform.OS === 'web') {
+        const confirmed = window.confirm(`${title}\n\n${message}`);
+        if (confirmed && onPress) {
+            onPress();
+        }
+    } else {
+        Alert.alert(title, message, [
+            {
+                text: onPress ? 'Lanjutkan' : 'OK',
+                style: 'default',
+                onPress
+            }
+        ]);
+    }
+};
+
 export default function LoginScreen() {
     const router = useRouter();
     const insets = useSafeAreaInsets();
@@ -25,82 +70,119 @@ export default function LoginScreen() {
     const [isLoading, setIsLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
 
+    // Get API URL with fallback
+    const getApiUrl = () => {
+        const apiUrl = process.env.EXPO_PUBLIC_API_URL;
+
+        if (!apiUrl) {
+            console.warn('EXPO_PUBLIC_API_URL not found, using fallback');
+            // Fallback URL - sesuaikan dengan setup development Anda
+            return Platform.OS === 'web'
+                ? 'http://localhost:3001' // Untuk web development
+                : 'http://192.168.1.100:3001'; // Untuk mobile (ganti dengan IP server Anda)
+        }
+
+        return apiUrl;
+    };
+
     const handleLogin = async () => {
         // Validasi input dasar
         if (!identifier.trim() || !password.trim()) {
-            Alert.alert(
+            showAlert(
                 'Input Tidak Valid',
-                'NIK/Email dan password wajib diisi.',
-                [{ text: 'OK', style: 'default' }]
+                'NIK/Email dan password wajib diisi.'
             );
             return;
         }
 
-        // TODO: Validasi format email atau NIK (dimatikan sementara)
-        // const isEmail = identifier.includes('@');
-        // const isNIK = /^VWVVVVVVVVVVVVVV$/.test(identifier.trim());
-
-        // if (!isEmail && !isNIK) {
-        //     Alert.alert(
-        //         'Format Tidak Valid',
-        //         'Masukkan format email yang benar atau NIK 16 digit.',
-        //         [{ text: 'OK', style: 'default' }]
-        //     );
-        //     return;
-        // }
-
         setIsLoading(true);
+
         try {
-            const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/auth/login`, {
+            const apiUrl = getApiUrl();
+            console.log('Attempting login with API URL:', apiUrl);
+
+            const response = await fetch(`${apiUrl}/api/auth/login`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    // Add CORS headers if needed
+                    'Accept': 'application/json',
                 },
-                body: JSON.stringify({ identifier: identifier.trim(), password }),
+                body: JSON.stringify({
+                    identifier: identifier.trim(),
+                    password
+                }),
             });
 
+            console.log('Response status:', response.status);
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => null);
+                throw new Error(errorData?.message || `HTTP error! status: ${response.status}`);
+            }
+
             const data = await response.json();
+            console.log('Login response:', { success: data.success, user: data.user?.nama });
 
-            if (response.ok) {
-                await AsyncStorage.setItem('userToken', data.token);
-                await AsyncStorage.setItem('userData', JSON.stringify(data.user));
-                await AsyncStorage.setItem('userRole', data.user.role);
-
+            if (data.success && data.token) {
+                // Store user data using cross-platform storage
+                await Storage.setItem('userToken', data.token);
+                await Storage.setItem('userData', JSON.stringify(data.user));
+                await Storage.setItem('userRole', data.user.role);
 
                 const jabatan = data.user.jabatan;
+                const role = data.user.role;
 
                 // Tentukan rute berdasarkan peran
-                const role = data.user.role;
-                let route = '/(app)/(pegawai)/home';
-                if (role === 'kabbag_umum') {
-                    route = '/(app)/(kabbag-umum)/home';
-                } else if (role === 'subbag_umum') {
-                    route = '/(app)/(subbag-umum)/home';
+                let route: string;
+                switch (role) {
+                    case 'kabbag_umum':
+                        route = '/(app)/(kabbag-umum)/home';
+                        break;
+                    case 'subbag_umum':
+                        route = '/(app)/(subbag-umum)/home';
+                        break;
+                    default:
+                        route = '/(app)/(pegawai)/home';
+                        break;
                 }
 
-                Alert.alert(
+                showAlert(
                     '✅ Login Berhasil',
                     `Selamat datang, ${data.user?.nama || 'User'}! Anda masuk sebagai ${jabatan || role}`,
-                    [{ 
-                        text: 'Lanjutkan',
-                        style: 'default',
-                        onPress: () => router.replace(route as any)
-                    }]
+                    () => {
+                        // Use a timeout to ensure storage is complete
+                        setTimeout(() => {
+                            try {
+                                router.replace(route as never);
+                            } catch (routeError) {
+                                console.error('Route error:', routeError);
+                                // Fallback route
+                                router.replace('/(app)/(pegawai)/home' as never);
+                            }
+                        }, 100);
+                    }
                 );
             } else {
-                Alert.alert(
+                showAlert(
                     '❌ Login Gagal',
-                    data.message || 'Kredensial tidak valid. Silakan periksa kembali NIK/Email dan password Anda.',
-                    [{ text: 'Coba Lagi', style: 'default' }]
+                    data.message || 'Login tidak berhasil. Silakan coba lagi.'
                 );
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error('Login error:', error);
-            Alert.alert(
-                '🔌 Error Koneksi',
-                'Tidak dapat terhubung ke server. Pastikan:\n\n• Server backend sudah aktif\n• Perangkat terhubung ke jaringan yang sama\n• Koneksi internet stabil',
-                [{ text: 'Mengerti', style: 'default' }]
-            );
+
+            let errorMessage = 'Terjadi kesalahan saat login.';
+
+            if (error.message?.includes('NetworkError') || error.message?.includes('fetch')) {
+                errorMessage = 'Tidak dapat terhubung ke server. Pastikan:\n\n• Server backend sudah aktif\n• Perangkat terhubung ke jaringan yang sama\n• Koneksi internet stabil';
+            } else if (error.message?.includes('CORS')) {
+                errorMessage = 'Error CORS. Pastikan server backend mengizinkan akses dari web.';
+            } else if (error.message) {
+                errorMessage = error.message;
+            }
+
+            showAlert('🔌 Error Koneksi', errorMessage);
         } finally {
             setIsLoading(false);
         }
@@ -109,8 +191,7 @@ export default function LoginScreen() {
     return (
         <LinearGradient
             colors={['#fafafa', '#f4f4f5']}
-            style={[styles.container, { paddingTop: insets.top }]
-            }
+            style={[styles.container, { paddingTop: insets.top }]}
         >
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -214,7 +295,7 @@ export default function LoginScreen() {
                                     onPress={handleLogin}
                                     loading={isLoading}
                                     disabled={isLoading || !identifier.trim() || !password.trim()}
-                                    style={[ 
+                                    style={[
                                         styles.loginButton,
                                         (!identifier.trim() || !password.trim()) && !isLoading
                                             ? styles.loginButtonDisabled

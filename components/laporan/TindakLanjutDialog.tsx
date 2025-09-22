@@ -13,7 +13,7 @@ import {
 } from 'react-native-paper';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
-import { Laporan, ApiError, getTindakLanjutHistory } from '@/utils/api';
+import { postTindakLanjut, Laporan, ApiError, getTindakLanjutHistory } from '@/utils/api';
 import { useAppTheme } from '@/context/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -183,14 +183,13 @@ export function TindakLanjutDialog({ visible, onDismiss, laporan, onSuccess }: T
             formData.append('status', statusTindakLanjut);
 
             if (lampiran && lampiran.uri) {
-                const name = getLampiranName();
                 formData.append('lampiran', {
                     uri: lampiran.uri,
-                    name: name,
+                    name: getLampiranName(),
                     type: lampiran.mimeType || 'application/octet-stream',
                 } as any);
             }
-            
+
             const API_URL = process.env.EXPO_PUBLIC_API_URL;
             const response = await fetch(`${API_URL}/api/tindaklanjut/${laporan.id_laporan}`, {
                 method: 'POST',
@@ -201,10 +200,9 @@ export function TindakLanjutDialog({ visible, onDismiss, laporan, onSuccess }: T
                 body: formData,
             });
 
-            const responseData = await response.json();
-
+            const data = await response.json();
             if (!response.ok) {
-                throw new ApiError(responseData.message || 'Gagal menyimpan tindak lanjut', response.status);
+                throw new Error(data.message || 'Gagal menyimpan tindak lanjut');
             }
 
             const statusLabel = statusOptions.find(s => s.value === statusTindakLanjut)?.label || 'Diupdate';
@@ -222,10 +220,9 @@ export function TindakLanjutDialog({ visible, onDismiss, laporan, onSuccess }: T
                     }
                 ]
             );
-        } catch (error: any) {
-            console.error('Error tindak lanjut:', error);
-            const errorMessage = error instanceof ApiError ? error.message : 'Terjadi kesalahan saat menyimpan tindak lanjut';
-            Alert.alert('Error', errorMessage);
+        } catch (err: any) {
+            console.error('Error tindak lanjut:', err);
+            Alert.alert('Error', err.message || 'Terjadi kesalahan saat menyimpan tindak lanjut');
         } finally {
             setLoading(false);
         }

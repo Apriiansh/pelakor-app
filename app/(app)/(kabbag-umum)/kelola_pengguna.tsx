@@ -1,32 +1,28 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet, FlatList, Alert, RefreshControl } from 'react-native';
+import { UNIT_KERJA_OPTIONS, ROLE_OPTIONS } from '@/constants/type';
+import { useAppTheme } from '@/context/ThemeContext';
+import { ApiError, createUser, deleteUser, getUsers, updateUser, User } from '@/utils/api';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Alert, FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 import {
+    ActivityIndicator,
+    Avatar,
     Button,
     Card,
-    Text,
-    Avatar,
-    IconButton,
-    FAB,
-    Portal,
-    Modal,
-    TextInput,
-    Provider,
-    ActivityIndicator,
-    Snackbar,
-    Menu,
     Chip,
+    FAB,
+    IconButton,
+    Menu,
+    Modal,
+    Portal,
+    Provider,
+    Snackbar,
+    Text,
+    TextInput,
 } from 'react-native-paper';
-import { useRouter } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useAppTheme } from '@/context/ThemeContext';
-import { getUsers, createUser, updateUser, deleteUser, ApiError, User } from '@/utils/api';
 
-// Map role keys to display-friendly names
-const ROLE_DISPLAY_NAMES: { [key: string]: string } = {
-    pegawai: 'Pegawai',
-    subbag_umum: 'Sub Bagian Umum',
-    kabbag_umum: 'Kepala Bagian Umum',
-};
+
 
 const UserCard = ({ user, onEdit, onDelete }: { user: User; onEdit: (user: User) => void; onDelete: (user: User) => void }) => {
     const { theme } = useAppTheme();
@@ -52,13 +48,14 @@ const UserCard = ({ user, onEdit, onDelete }: { user: User; onEdit: (user: User)
                 <View style={styles.userInfo}>
                     <Text style={styles.userName}>{user.nama}</Text>
                     <Text style={styles.userJabatan}>{user.jabatan || 'Jabatan tidak diatur'}</Text>
+                    <Text style={styles.userJabatan}>{(Array.isArray(user.unit_kerja) ? user.unit_kerja.join(', ') : user.unit_kerja) || 'Unit Kerja tidak diatur'}</Text>
                     <View style={styles.chipContainer}>
                         <Chip
                             icon="account-tie"
                             style={[styles.chip, { backgroundColor: theme.colors.primaryContainer }]}
                             textStyle={[styles.chipText, { color: theme.colors.onPrimaryContainer }]}
                         >
-                            {ROLE_DISPLAY_NAMES[user.role] || user.role}
+                            {ROLE_OPTIONS[user.role] || user.role}
                         </Chip>
                     </View>
                 </View>
@@ -79,18 +76,22 @@ export default function KelolaPenggunaScreen() {
 
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [modalVisible, setModalVisible] = useState(false);
     const [isEditMode, setIsEditMode] = useState(false);
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
     const [snackbar, setSnackbar] = useState({ visible: false, message: '' });
     const [menuVisible, setMenuVisible] = useState(false);
+    const [unitKerjaModalVisible, setUnitKerjaModalVisible] = useState(false);
+    const [unitKerjaSearch, setUnitKerjaSearch] = useState('');
 
     // Form state
     const [nama, setNama] = useState('');
     const [nik, setNik] = useState('');
     const [email, setEmail] = useState('');
     const [jabatan, setJabatan] = useState('');
+    const [unit_kerja, setUnitKerja] = useState('');
     const [role, setRole] = useState('');
     const [password, setPassword] = useState('');
 
@@ -124,6 +125,7 @@ export default function KelolaPenggunaScreen() {
         setNik('');
         setEmail('');
         setJabatan('');
+        setUnitKerja('');
         setRole('');
         setPassword('');
     };
@@ -145,6 +147,7 @@ export default function KelolaPenggunaScreen() {
         setNik(user.nik);
         setEmail(user.email);
         setJabatan(user.jabatan || '');
+        setUnitKerja((Array.isArray(user.unit_kerja) ? user.unit_kerja[0] : user.unit_kerja) || '');
         setRole(user.role);
         setIsEditMode(true);
         setModalVisible(true);
@@ -173,7 +176,7 @@ export default function KelolaPenggunaScreen() {
     };
 
     const handleSave = async () => {
-        if (!nama || !nik || !email || !role || !jabatan || (!isEditMode && !password)) {
+        if (!nama || !nik || !email || !role || !jabatan || !unit_kerja || (!isEditMode && !password)) {
             setSnackbar({ visible: true, message: 'Harap isi semua field yang wajib diisi' });
             return;
         }
@@ -183,10 +186,12 @@ export default function KelolaPenggunaScreen() {
             nik,
             email,
             jabatan,
+            unit_kerja,
             role,
             password: password || undefined,
         };
 
+        setSaving(true);
         try {
             if (isEditMode && selectedUser) {
                 // For edit, we don't send NIK in the body and password is optional
@@ -202,6 +207,8 @@ export default function KelolaPenggunaScreen() {
         } catch (error) {
             const message = error instanceof ApiError ? error.message : `Gagal menyimpan pengguna`;
             setSnackbar({ visible: true, message });
+        } finally {
+            setSaving(false);
         }
     };
 
@@ -242,7 +249,9 @@ export default function KelolaPenggunaScreen() {
                 </LinearGradient>
 
                 <FlatList
-                    data={users}
+                    data={ users.filter(
+                        (u) => u.role !== 'kabbag_umum'
+                    ) }
                     keyExtractor={(item) => item.nik}
                     renderItem={({ item }) => (
                         <UserCard user={item} onEdit={handleEdit} onDelete={handleDelete} />
@@ -277,6 +286,18 @@ export default function KelolaPenggunaScreen() {
                         <TextInput mode="outlined" label="Nama Lengkap" value={nama} onChangeText={setNama} style={styles.input} />
                         <TextInput mode="outlined" label="NIK" value={nik} onChangeText={setNik} keyboardType="numeric" style={styles.input} disabled={isEditMode} />
                         <TextInput mode="outlined" label="Jabatan" value={jabatan} onChangeText={setJabatan} style={styles.input} />
+                        <Button
+                            mode="outlined"
+                            onPress={() => {
+                                setUnitKerjaSearch(unit_kerja);
+                                setUnitKerjaModalVisible(true);
+                            }}
+                            style={styles.input}
+                            contentStyle={styles.menuAnchor}
+                            icon="chevron-down"
+                        >
+                            {unit_kerja || 'Pilih Unit Kerja'}
+                        </Button>
                         <TextInput mode="outlined" label="Email" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" style={styles.input} />
 
                         <Menu
@@ -290,7 +311,7 @@ export default function KelolaPenggunaScreen() {
                                     contentStyle={styles.menuAnchor}
                                     icon="chevron-down"
                                 >
-                                    {ROLE_DISPLAY_NAMES[role] || 'Pilih Role'}
+                                    {ROLE_OPTIONS[role] || 'Pilih Role'}
                                 </Button>
                             }>
                             <Menu.Item onPress={() => { setRole('pegawai'); setMenuVisible(false); }} title="Pegawai" />
@@ -299,10 +320,53 @@ export default function KelolaPenggunaScreen() {
                         </Menu>
 
                         <TextInput mode="outlined" label={isEditMode ? "Password Baru (Opsional)" : "Password"} secureTextEntry onChangeText={setPassword} style={styles.input} />
-                        <Button mode="contained" onPress={handleSave} style={styles.saveButton} loading={loading} disabled={loading}>
+                        <Button mode="contained" onPress={handleSave} style={styles.saveButton} loading={saving} disabled={saving}>
                             Simpan
                         </Button>
-                        <Button onPress={hideModal} disabled={loading}>
+                        <Button onPress={hideModal} disabled={saving}>
+                            Batal
+                        </Button>
+                    </Modal>
+                    <Modal visible={unitKerjaModalVisible} onDismiss={() => setUnitKerjaModalVisible(false)} contentContainerStyle={[styles.modalContainer, { backgroundColor: theme.colors.surface }]}>
+                        <Text style={styles.modalTitle}>Pilih atau Masukkan Unit Kerja</Text>
+                        <TextInput
+                            mode="outlined"
+                            label="Cari atau buat baru"
+                            value={unitKerjaSearch}
+                            onChangeText={setUnitKerjaSearch}
+                            style={styles.input}
+                        />
+                        <FlatList
+                            data={
+                                unitKerjaSearch
+                                ? UNIT_KERJA_OPTIONS.filter(opt => opt.toLowerCase().includes(unitKerjaSearch.toLowerCase()))
+                                : UNIT_KERJA_OPTIONS
+                            }
+                            keyExtractor={item => item}
+                            renderItem={({ item }) => (
+                                <Menu.Item
+                                    onPress={() => {
+                                        setUnitKerja(item);
+                                        setUnitKerjaModalVisible(false);
+                                    }}
+                                    title={item}
+                                    style={{ backgroundColor: theme.colors.surfaceVariant, borderRadius: 8, marginVertical: 2 }}
+                                />
+                            )}
+                            style={{ maxHeight: 300, marginBottom: 12 }}
+                            nestedScrollEnabled
+                        />
+                        <Button
+                            mode="contained"
+                            onPress={() => {
+                                setUnitKerja(unitKerjaSearch);
+                                setUnitKerjaModalVisible(false);
+                            }}
+                            style={styles.saveButton}
+                        >
+                            Pilih
+                        </Button>
+                        <Button onPress={() => setUnitKerjaModalVisible(false)}>
                             Batal
                         </Button>
                     </Modal>
@@ -428,6 +492,7 @@ const createStyles = (theme: any) => StyleSheet.create({
         borderRadius: 12,
     },
     modalTitle: {
+        color: theme.colors.onSurface,
         fontSize: 20,
         fontWeight: 'bold',
         marginBottom: 20,
@@ -435,6 +500,9 @@ const createStyles = (theme: any) => StyleSheet.create({
     },
     input: {
         marginBottom: 12,
+        backgroundColor: theme.colors.surface,
+        color: theme.colors.onSurface,
+        borderRadius: 12,
     },
     menuAnchor: {
         justifyContent: 'flex-start',

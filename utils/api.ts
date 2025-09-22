@@ -187,13 +187,13 @@ export const getTindakLanjut = () => {
  * Tambahkan catatan tindak lanjut dengan lampiran opsional
  */
 export const postTindakLanjut = (laporan_id: string, data: {
-    catatan?: string;
+    catatan_tindak_lanjut?: string;
     status?: string;
     lampiran?: File | null;
 }) => {
     const formData = new FormData();
-    if (data.catatan) {
-        formData.append('catatan', data.catatan);
+    if (data.catatan_tindak_lanjut) {
+        formData.append('catatan_tindak_lanjut', data.catatan_tindak_lanjut);
     }
     if (data.status) {
         formData.append('status', data.status);
@@ -213,13 +213,13 @@ export const postTindakLanjut = (laporan_id: string, data: {
  * Update catatan tindak lanjut
  */
 export const updateTindakLanjut = (id_tindak_lanjut: string, data: {
-    catatan?: string;
+    catatan_tindak_lanjut?: string;
     status?: string;
     lampiran?: File | null;
 }) => {
     const formData = new FormData();
-    if (data.catatan !== undefined) {
-        formData.append('catatan', data.catatan);
+    if (data.catatan_tindak_lanjut !== undefined) {
+        formData.append('catatan', data.catatan_tindak_lanjut);
     }
     if (data.status !== undefined) {
         formData.append('status', data.status);
@@ -232,6 +232,10 @@ export const updateTindakLanjut = (id_tindak_lanjut: string, data: {
         method: 'PUT',
         body: formData,
     });
+};
+
+export const getLaporanSelesai = () => {
+    return apiFetch('/api/laporan/selesai');
 };
 
 /**
@@ -272,6 +276,7 @@ export interface User {
     email: string;
     role: 'kabbag_umum' | 'subbag_umum' | 'pegawai';
     jabatan?: string;
+    unit_kerja?: string;
 }
 
 export interface Bagian {
@@ -290,7 +295,7 @@ export interface Laporan {
     nik_pelapor: string;
     pelapor: string;
     created_at: string;
-    updated_at?: string;
+    updated_at: string;
 }
 
 export interface DisposisiHistory {
@@ -391,6 +396,7 @@ export const createUser = (data: {
     email: string;
     role: string;
     jabatan?: string;
+    unit_kerja?: string;
     password: string;
 }) => {
     return apiFetch('/api/users', {
@@ -408,6 +414,7 @@ export const updateUser = (nik: string, data: {
     email: string;
     role: string;
     jabatan?: string;
+    unit_kerja?: string;
     password?: string;
 }) => {
     return apiFetch(`/api/users/${nik}`, {
@@ -431,9 +438,10 @@ export const deleteUser = (nik: string) => {
 /**
  * Helper untuk mengambil file URL lengkap
  */
-export const getFileUrl = (filePath: string | null | undefined): string | null => {
-    if (!filePath || !API_BASE_URL) return null;
-    return `${API_BASE_URL}${filePath}`;
+export const getFileUrl = ( filePath: string | null | undefined): string | null => { 
+    if (!filePath || !API_BASE_URL) return null; 
+        
+    return `${API_BASE_URL}${filePath}`; 
 };
 
 /**
