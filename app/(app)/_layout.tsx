@@ -38,11 +38,12 @@ export default function AppLayout() {
       // Redirect to the login page if not authenticated.
       router.replace('/(auth)/login');
     } else if (status === 'authenticated' && !inAppGroup) {
-      // If authenticated and not in the app group, redirect to the role-based home.
-      let homeRoute = '/(app)/(pegawai)/home'; // Default route
-      if (role === 'Kepala Bagian Umum') {
+      let homeRoute = '/(app)/(pegawai)/home'; 
+      if (role === 'bupati') {
+        homeRoute = '/(app)/(bupati)/home';
+      } else if (role === 'kabbag_umum') {
         homeRoute = '/(app)/(kabbag-umum)/home';
-      } else if (role === 'Sub Bagian Umum') {
+      } else if (role === 'subbag_umum') {
         homeRoute = '/(app)/(subbag-umum)/home';
       }
       router.replace(homeRoute as any);

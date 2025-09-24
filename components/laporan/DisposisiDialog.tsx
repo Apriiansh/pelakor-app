@@ -74,7 +74,7 @@ export function DisposisiDialog({ visible, onDismiss, laporan, subbagUsers, onSu
         setDisposisiLoading(true);
         try {
             const disposisiData = {
-                nik_penanggung_jawab: isApproved ? selectedSubbag : undefined,
+                nip_penanggung_jawab: isApproved ? selectedSubbag : undefined,
                 catatan_disposisi: catatan.trim(), 
                 valid: isApproved
             };
@@ -85,7 +85,7 @@ export function DisposisiDialog({ visible, onDismiss, laporan, subbagUsers, onSu
             Alert.alert(
                 isApproved ? 'Laporan Didisposisikan! ✅' : 'Laporan Ditolak! ❌',
                 isApproved
-                    ? `Laporan berhasil didisposisikan kepada ${subbagUsers.find(u => u.nik === selectedSubbag)?.jabatan}`
+                    ? `Laporan berhasil didisposisikan kepada ${subbagUsers.find(u => u.nip === selectedSubbag)?.jabatan}`
                     : 'Laporan telah ditolak dengan alasan yang diberikan',
                 [
                     {
@@ -142,12 +142,12 @@ export function DisposisiDialog({ visible, onDismiss, laporan, subbagUsers, onSu
                                 <ScrollView style={styles.subbagList} nestedScrollEnabled>
                                     {subbagUsers.map((user) => (
                                         <TouchableOpacity
-                                            key={user.nik}
+                                            key={user.nip}
                                             style={[
                                                 styles.subbagItem,
-                                                selectedSubbag === user.nik && styles.subbagItemSelected
+                                                selectedSubbag === user.nip && styles.subbagItemSelected
                                             ]}
-                                            onPress={() => setSelectedSubbag(user.nik)}
+                                            onPress={() => setSelectedSubbag(user.nip)}
                                         >
                                             <View style={styles.subbagItemContent}>
                                                 <Avatar.Text
@@ -159,14 +159,14 @@ export function DisposisiDialog({ visible, onDismiss, laporan, subbagUsers, onSu
                                                 <View style={styles.subbagDetails}>
                                                     <Text style={[
                                                         styles.subbagNama,
-                                                        selectedSubbag === user.nik && styles.subbagNamaSelected
+                                                        selectedSubbag === user.nip && styles.subbagNamaSelected
                                                     ]}>
                                                         {user.nama}
                                                     </Text>
-                                                    <Text style={styles.subbagNik}>NIK: {user.nik}</Text>
+                                                    <Text style={styles.nip}>NIP: {user.nip}</Text>
                                                 </View>
                                             </View>
-                                            {selectedSubbag === user.nik && (
+                                            {selectedSubbag === user.nip && (
                                                 <IconButton
                                                     icon="check-circle"
                                                     size={20}
@@ -344,7 +344,7 @@ const createStyles = (theme: any) => StyleSheet.create({
         fontWeight: '600',
         color: theme.colors.primary,
     },
-    subbagNik: {
+    subbagNip: {
         fontSize: 12,
         color: theme.colors.onSurfaceVariant,
     },

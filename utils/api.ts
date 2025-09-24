@@ -1,10 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 
 // Ambil base URL dari environment variables
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
 
 if (!API_BASE_URL) {
     console.error("API_BASE_URL tidak ditemukan di environment variables.");
+    console.error("Pastikan file .env memiliki EXPO_PUBLIC_API_URL");
 }
 
 export class ApiError extends Error {
@@ -13,13 +15,58 @@ export class ApiError extends Error {
     }
 }
 
-// Fungsi helper utama untuk fetch
-async function apiFetch(endpoint: string, options: RequestInit = {}) {
-    const token = await AsyncStorage.getItem('userToken');
+// Enhanced token management with cross-platform support
+const TokenManager = {
+    async getToken(): Promise<string | null> {
+        try {
+            if (Platform.OS === 'web') {
+                return localStorage.getItem('userToken');
+            } else {
+                return await AsyncStorage.getItem('userToken');
+            }
+        } catch (error) {
+            console.error('Error getting token:', error);
+            return null;
+        }
+    },
 
+    async setToken(token: string): Promise<void> {
+        try {
+            if (Platform.OS === 'web') {
+                localStorage.setItem('userToken', token);
+            } else {
+                await AsyncStorage.setItem('userToken', token);
+            }
+        } catch (error) {
+            console.error('Error setting token:', error);
+            throw error;
+        }
+    },
+
+    async removeToken(): Promise<void> {
+        try {
+            if (Platform.OS === 'web') {
+                localStorage.removeItem('userToken');
+            } else {
+                await AsyncStorage.removeItem('userToken');
+            }
+        } catch (error) {
+            console.error('Error removing token:', error);
+            throw error;
+        }
+    }
+};
+
+// Enhanced fetch function with better error handling and timeout
+async function apiFetch(endpoint: string, options: RequestInit = {}) {
+    if (!API_BASE_URL) {
+        throw new ApiError('API URL tidak dikonfigurasi', 500);
+    }
+
+    const token = await TokenManager.getToken();
     const headers = new Headers(options.headers || {});
     
-    // Hanya set Content-Type jika bukan FormData (untuk file upload)
+    // Set content type only if not FormData (for file upload)
     if (!(options.body instanceof FormData)) {
         headers.set('Content-Type', 'application/json');
     }
@@ -28,22 +75,62 @@ async function apiFetch(endpoint: string, options: RequestInit = {}) {
         headers.set('Authorization', `Bearer ${token}`);
     }
 
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-        ...options,
-        headers,
-    });
+    // Add timeout to requests
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: 'Terjadi kesalahan pada server' }));
-        throw new ApiError(errorData.message || 'Gagal memuat data', response.status);
+    try {
+        console.log(`API Request: ${options.method || 'GET'} ${API_BASE_URL}${endpoint}`);
+
+        const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+            ...options,
+            headers,
+            signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        console.log(`API Response: ${response.status} ${response.statusText}`);
+
+        if (!response.ok) {
+            let errorData;
+            try {
+                errorData = await response.json();
+            } catch (parseError) {
+                errorData = { message: 'Terjadi kesalahan pada server' };
+            }
+            
+            throw new ApiError(
+                errorData.message || `HTTP ${response.status}: ${response.statusText}`, 
+                response.status
+            );
+        }
+
+        // Handle response tanpa konten (misal: 204 No Content)
+        if (response.status === 204) {
+            return null;
+        }
+
+        return await response.json();
+    } catch (error) {
+        clearTimeout(timeoutId);
+        
+        if (error instanceof ApiError) {
+            throw error;
+        }
+
+        if (error instanceof Error) {
+            if (error.name === 'AbortError') {
+                throw new ApiError('Request timeout. Periksa koneksi internet.', 408);
+            }
+            
+            if (error.message.includes('Network request failed')) {
+                throw new ApiError('Tidak dapat terhubung ke server. Periksa koneksi internet.', 0);
+            }
+        }
+
+        throw new ApiError('Terjadi kesalahan yang tidak terduga', 500);
     }
-
-    // Handle response tanpa konten (misal: 204 No Content)
-    if (response.status === 204) {
-        return null;
-    }
-
-    return response.json();
 }
 
 // --- LAPORAN ENDPOINTS ---
@@ -152,7 +239,7 @@ export const getLaporanDiajukan = () => {
  * Lakukan disposisi laporan ke Sub Bagian Umum
  */
 export const postDisposisi = (laporan_id: string, data: {
-    nik_penanggung_jawab?: string;
+    nip_penanggung_jawab?: string;
     catatan_disposisi?: string; 
     valid: boolean;
 }) => {
@@ -179,8 +266,6 @@ export const getDisposisiHistory = (laporan_id: string) => {
 export const getTindakLanjut = () => {
     return apiFetch('/api/tindaklanjut');
 };
-
-// Add these updated functions to your utils/api.ts file
 
 /**
  * POST /api/tindaklanjut/:laporan_id
@@ -272,7 +357,7 @@ export const getTindakLanjutHistory = (laporan_id: string) => {
 
 export interface User {
     nama: string;
-    nik: string;
+    nip: string;
     email: string;
     role: string;
     jabatan?: string;
@@ -292,7 +377,7 @@ export interface Laporan {
     kategori?: string;
     lampiran?: string;
     status_laporan: 'diajukan' | 'diproses' | 'ditolak' | 'ditindaklanjuti' | 'selesai';
-    nik_pelapor: string;
+    nip_pelapor: string;
     pelapor: string;
     created_at: string;
     updated_at: string;
@@ -306,6 +391,52 @@ export interface DisposisiHistory {
     created_at: string;
     penanggung_jawab?: string;
 }
+
+// --- AUTH ENDPOINTS ---
+
+/**
+ * POST /api/auth/login
+ * Login user dan dapatkan token - Enhanced version with timeout
+ */
+export const apiLogin = async (data: { identifier: string; password: string }): Promise<Response> => {
+    if (!API_BASE_URL) {
+        throw new Error('API URL tidak dikonfigurasi. Periksa file .env');
+    }
+
+    console.log('Login attempt to:', `${API_BASE_URL}/api/auth/login`);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+            },
+            body: JSON.stringify(data),
+            signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+        return response;
+    } catch (error) {
+        clearTimeout(timeoutId);
+        
+        if (error instanceof Error) {
+            if (error.name === 'AbortError') {
+                throw new Error('Request timeout. Periksa koneksi internet dan server.');
+            }
+            
+            if (error.message.includes('Network request failed')) {
+                throw new Error('Tidak dapat terhubung ke server. Periksa koneksi internet dan pastikan server aktif.');
+            }
+        }
+        
+        throw error;
+    }
+};
 
 // --- USER ENDPOINTS ---
 
@@ -379,11 +510,11 @@ export const getCurrentUser = () => {
 };
 
 /**
- * GET /api/users/:nik
- * Ambil detail user berdasarkan NIK
+ * GET /api/users/:nip
+ * Ambil detail user berdasarkan NIP
  */
-export const getUserDetail = (nik: string) => {
-    return apiFetch(`/api/users/${nik}`);
+export const getUserDetail = (nip: string) => {
+    return apiFetch(`/api/users/${nip}`);
 };
 
 /**
@@ -392,7 +523,7 @@ export const getUserDetail = (nik: string) => {
  */
 export const createUser = (data: {
     nama: string;
-    nik: string;
+    nip: string;
     email: string;
     role: string;
     jabatan?: string;
@@ -406,10 +537,10 @@ export const createUser = (data: {
 };
 
 /**
- * PUT /api/users/:nik
- * Update user berdasarkan NIK
+ * PUT /api/users/:nip
+ * Update user berdasarkan NIP
  */
-export const updateUser = (nik: string, data: {
+export const updateUser = (nip: string, data: {
     nama: string;
     email: string;
     role: string;
@@ -417,18 +548,18 @@ export const updateUser = (nik: string, data: {
     unit_kerja?: string;
     password?: string;
 }) => {
-    return apiFetch(`/api/users/${nik}`, {
+    return apiFetch(`/api/users/${nip}`, {
         method: 'PUT',
         body: JSON.stringify(data),
     });
 };
 
 /**
- * DELETE /api/users/:nik
- * Hapus user berdasarkan NIK
+ * DELETE /api/users/:nip
+ * Hapus user berdasarkan NIP
  */
-export const deleteUser = (nik: string) => {
-    return apiFetch(`/api/users/${nik}`, {
+export const deleteUser = (nip: string) => {
+    return apiFetch(`/api/users/${nip}`, {
         method: 'DELETE',
     });
 };

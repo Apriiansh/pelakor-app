@@ -242,7 +242,7 @@ export default function DisposisiScreen() {
                                         />
                                         <View style={styles.pelaporDetails}>
                                             <Text style={styles.pelaporNama}>{item.pelapor}</Text>
-                                            <Text style={styles.pelaporNik}>NIK: {item.nik_pelapor}</Text>
+                                            <Text style={styles.pelaporNip}>NIP: {item.nip_pelapor}</Text>
                                         </View>
                                     </View>
 
@@ -458,7 +458,7 @@ const createStyles = (theme: any) => StyleSheet.create({
         fontWeight: '600',
         color: theme.colors.onSurface,
     },
-    pelaporNik: {
+    pelaporNip: {
         fontSize: 12,
         color: theme.colors.onSurfaceVariant,
     },

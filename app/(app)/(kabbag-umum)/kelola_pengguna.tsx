@@ -46,7 +46,7 @@ const UserCard = ({ user, onEdit, onDelete }: { user: User; onEdit: (user: User)
     return (
         <Card style={styles.card}>
             <Card.Content style={styles.cardContent}>
-                
+
                 <View style={styles.userInfo}>
                     <Text style={styles.userName}>{user.nama}</Text>
                     <Text style={styles.userJabatan}>{user.jabatan || 'Jabatan tidak diatur'}</Text>
@@ -81,7 +81,7 @@ export default function KelolaPenggunaScreen() {
 
     // Form state
     const [nama, setNama] = useState('');
-    const [nik, setNik] = useState('');
+    const [nip, setNip] = useState('');
     const [email, setEmail] = useState('');
     const [jabatan, setJabatan] = useState('');
     const [unit_kerja, setUnitKerja] = useState('');
@@ -115,7 +115,7 @@ export default function KelolaPenggunaScreen() {
         setSelectedUser(null);
         setIsEditMode(false);
         setNama('');
-        setNik('');
+        setNip('');
         setEmail('');
         setJabatan('');
         setUnitKerja('');
@@ -137,7 +137,7 @@ export default function KelolaPenggunaScreen() {
     const handleEdit = (user: User) => {
         setSelectedUser(user);
         setNama(user.nama);
-        setNik(user.nik);
+        setNip(user.nip);
         setEmail(user.email);
         setJabatan(user.jabatan || '');
         setUnitKerja(cleanUnitKerja(user.unit_kerja));
@@ -155,7 +155,7 @@ export default function KelolaPenggunaScreen() {
                 {
                     text: "Hapus", style: "destructive", onPress: async () => {
                         try {
-                            await deleteUser(user.nik);
+                            await deleteUser(user.nip);
                             setSnackbar({ visible: true, message: 'Pengguna berhasil dihapus' });
                             fetchUsers(); // Refresh list
                         } catch (error) {
@@ -169,14 +169,14 @@ export default function KelolaPenggunaScreen() {
     };
 
     const handleSave = async () => {
-        if (!nama || !nik || !email || !role || !jabatan || !unit_kerja || (!isEditMode && !password)) {
+        if (!nama || !nip || !email || !role || !jabatan || !unit_kerja || (!isEditMode && !password)) {
             setSnackbar({ visible: true, message: 'Harap isi semua field yang wajib diisi' });
             return;
         }
 
         const userData = {
             nama,
-            nik,
+            nip,
             email,
             jabatan,
             unit_kerja,
@@ -187,15 +187,15 @@ export default function KelolaPenggunaScreen() {
         setSaving(true);
         try {
             if (isEditMode && selectedUser) {
-                const { nik: _nik, ...updateData } = userData;
-                await updateUser(selectedUser.nik, updateData);
+                const { nip: _nip, ...updateData } = userData;
+                await updateUser(selectedUser.nip, updateData);
                 setSnackbar({ visible: true, message: 'Pengguna berhasil diperbarui' });
             } else {
-                await createUser(userData as any); 
+                await createUser(userData as any);
                 setSnackbar({ visible: true, message: 'Pengguna berhasil ditambahkan' });
             }
             hideModal();
-            fetchUsers(); 
+            fetchUsers();
         } catch (error) {
             const message = error instanceof ApiError ? error.message : `Gagal menyimpan pengguna`;
             setSnackbar({ visible: true, message });
@@ -241,10 +241,10 @@ export default function KelolaPenggunaScreen() {
                 </LinearGradient>
 
                 <FlatList
-                    data={ users.filter(
+                    data={users.filter(
                         (u) => u.role !== 'kabbag_umum'
-                    ) }
-                    keyExtractor={(item) => item.nik}
+                    )}
+                    keyExtractor={(item) => item.nip}
                     renderItem={({ item }) => (
                         <UserCard user={item} onEdit={handleEdit} onDelete={handleDelete} />
                     )}
@@ -276,7 +276,7 @@ export default function KelolaPenggunaScreen() {
                     <Modal visible={modalVisible} onDismiss={hideModal} contentContainerStyle={[styles.modalContainer, { backgroundColor: theme.colors.surface }]}>
                         <Text style={styles.modalTitle}>{isEditMode ? 'Edit Pengguna' : 'Tambah Pengguna'}</Text>
                         <TextInput mode="outlined" label="Nama Lengkap" value={nama} onChangeText={setNama} style={styles.input} />
-                        <TextInput mode="outlined" label="NIK" value={nik} onChangeText={setNik} keyboardType="numeric" style={styles.input} disabled={isEditMode} />
+                        <TextInput mode="outlined" label="NIP" value={nip} onChangeText={setNip} keyboardType="numeric" style={styles.input} disabled={isEditMode} />
                         <TextInput mode="outlined" label="Jabatan" value={jabatan} onChangeText={setJabatan} style={styles.input} />
                         <Button
                             mode="outlined"
@@ -311,13 +311,13 @@ export default function KelolaPenggunaScreen() {
                             <Menu.Item onPress={() => { setRole('sekda'); setMenuVisible(false); }} title="Sekretariat Daerah" />
                             <Menu.Item onPress={() => { setRole('asisten'); setMenuVisible(false); }} title="Asisten" />
                             <Menu.Item onPress={() => { setRole('staf_ahli'); setMenuVisible(false); }} title="Staf Ahli" />
-                            
+
 
                             {/* <Menu.Item onPress={() => { setRole('subbag_umum'); setMenuVisible(false); }} title="Sub Bagian Umum" />
                             <Menu.Item onPress={() => { setRole('kabbag_umum'); setMenuVisible(false); }} title="Kepala Bagian Umum" /> */}
 
                             <Menu.Item onPress={() => { setRole('pegawai'); setMenuVisible(false); }} title="Pegawai" />
-                                
+
                             <Menu.Item onPress={() => { setRole('opd'); setMenuVisible(false); }} title="Pegawai Organisasi Perangkat Daerah" />
                         </Menu>
 
@@ -341,8 +341,8 @@ export default function KelolaPenggunaScreen() {
                         <FlatList
                             data={
                                 unitKerjaSearch
-                                ? UNIT_KERJA_OPTIONS.filter(opt => opt.toLowerCase().includes(unitKerjaSearch.toLowerCase()))
-                                : UNIT_KERJA_OPTIONS
+                                    ? UNIT_KERJA_OPTIONS.filter(opt => opt.toLowerCase().includes(unitKerjaSearch.toLowerCase()))
+                                    : UNIT_KERJA_OPTIONS
                             }
                             keyExtractor={item => item}
                             renderItem={({ item }) => (
@@ -449,13 +449,13 @@ const createStyles = (theme: any) => StyleSheet.create({
     userInfo: {
         flex: 1,
         marginLeft: 16,
-        
+
     },
     userName: {
         fontSize: 16,
         fontWeight: 'bold',
         color: theme.colors.onSurface,
-        
+
     },
     userJabatan: {
         fontSize: 14,
@@ -482,7 +482,7 @@ const createStyles = (theme: any) => StyleSheet.create({
         position: 'absolute',
         marginRight: 16,
         marginBottom: 120,
-        
+
         right: 2,
         bottom: 0,
         borderRadius: 28,

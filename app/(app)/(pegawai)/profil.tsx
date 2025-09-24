@@ -2,8 +2,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, View, ActivityIndicator } from 'react-native';
-import { Avatar, Button, Card, useTheme, List, IconButton, Portal, Modal, Divider } from 'react-native-paper'; 
-import { useAppTheme, ThemePreference } from '@/context/ThemeContext'; 
+import { Avatar, Button, Card, useTheme, List, IconButton, Portal, Modal, Divider } from 'react-native-paper';
+import { useAppTheme, ThemePreference } from '@/context/ThemeContext';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { ThemeSettings } from '@/components/ThemeSettings';
 
@@ -11,11 +11,11 @@ import { ThemeSettings } from '@/components/ThemeSettings';
 const API_URL = `${process.env.EXPO_PUBLIC_API_URL}`;
 
 export default function ProfilPegawai() {
-    const [user, setUser] = useState<{ nama: string; nik: string; email: string; jabatan: String; role: string } | null>(null);
+    const [user, setUser] = useState<{ nama: string; nip: string; email: string; jabatan: String; role: string } | null>(null);
     const [loading, setLoading] = useState(true);
     const [themeModalVisible, setThemeModalVisible] = useState(false);
     const router = useRouter();
-    const theme = useTheme(); 
+    const theme = useTheme();
     const { themePreference, setThemePreference } = useAppTheme();
 
     useEffect(() => {
@@ -149,8 +149,8 @@ export default function ProfilPegawai() {
                 <Card style={[styles.infoCard, { backgroundColor: theme.colors.surface }]}>
                     <Card.Content>
                         <View style={[styles.infoRow, { borderBottomColor: theme.colors.outlineVariant }]}>
-                            <Text style={[styles.label, { color: theme.colors.onSurfaceVariant }]}>NIK</Text>
-                            <Text style={[styles.value, { color: theme.colors.onSurface }]}>{user?.nik || '-'}</Text>
+                            <Text style={[styles.label, { color: theme.colors.onSurfaceVariant }]}>NIP</Text>
+                            <Text style={[styles.value, { color: theme.colors.onSurface }]}>{user?.nip || '-'}</Text>
                         </View>
                         <View style={[styles.infoRow, { borderBottomColor: theme.colors.outlineVariant }]}>
                             <Text style={[styles.label, { color: theme.colors.onSurfaceVariant }]}>Email</Text>

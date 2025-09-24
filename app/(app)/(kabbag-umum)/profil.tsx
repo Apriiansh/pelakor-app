@@ -10,7 +10,7 @@ import { ThemeSettings } from '@/components/ThemeSettings';
 const API_URL = `${process.env.EXPO_PUBLIC_API_URL}`;
 
 export default function ProfilKabbagUmum() {
-    const [user, setUser] = useState<{ nama: string; nik: string; email: string; jabatan: String; role: string } | null>(null);
+    const [user, setUser] = useState<{ nama: string; nip: string; email: string; jabatan: String; role: string } | null>(null);
     const [loading, setLoading] = useState(true);
     const [themeModalVisible, setThemeModalVisible] = useState(false);
     const router = useRouter();
@@ -147,8 +147,8 @@ export default function ProfilKabbagUmum() {
                 <Card style={[styles.infoCard, { backgroundColor: theme.colors.surface }]}>
                     <Card.Content>
                         <View style={[styles.infoRow, { borderBottomColor: theme.colors.outlineVariant }]}>
-                            <Text style={[styles.label, { color: theme.colors.onSurfaceVariant }]}>NIK</Text>
-                            <Text style={[styles.value, { color: theme.colors.onSurface }]}>{user?.nik || '-'}</Text>
+                            <Text style={[styles.label, { color: theme.colors.onSurfaceVariant }]}>NIP</Text>
+                            <Text style={[styles.value, { color: theme.colors.onSurface }]}>{user?.nip || '-'}</Text>
                         </View>
                         <View style={[styles.infoRow, { borderBottomColor: theme.colors.outlineVariant }]}>
                             <Text style={[styles.label, { color: theme.colors.onSurfaceVariant }]}>Email</Text>

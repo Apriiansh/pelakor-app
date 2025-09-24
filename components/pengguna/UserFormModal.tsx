@@ -1,5 +1,5 @@
 import { CustomTheme } from '@/constants/theme';
-import { JABATAN_OPTIONS } from '@/constants/type';
+import { UNIT_KERJA_OPTIONS, ROLE_OPTIONS } from '@/constants/type';
 import { useAppTheme } from '@/context/ThemeContext';
 import { User } from '@/utils/api';
 import React, { useEffect, useState } from 'react';
@@ -17,7 +17,7 @@ import {
 interface UserFormModalProps {
     visible: boolean;
     onDismiss: () => void;
-    onSave: (userData: Partial<User> & { password?: string }, isEditMode: boolean, originalNik?: string) => Promise<void>;
+    onSave: (userData: Partial<User> & { password?: string }, isEditMode: boolean, originalNip?: string) => Promise<void>;
     initialUser: User | null;
     loading: boolean; // For save operation
     snackbar: { visible: boolean; message: string };
@@ -39,11 +39,11 @@ const UserFormModal: React.FC<UserFormModalProps> = ({
     const styles = getStyles(theme);
 
     const [isEditMode, setIsEditMode] = useState(false);
-    const [originalNik, setOriginalNik] = useState<string | undefined>(undefined);
+    const [originalNip, setOriginalNip] = useState<string | undefined>(undefined);
 
     // Form state
     const [nama, setNama] = useState('');
-    const [nik, setNik] = useState('');
+    const [nip, setNip] = useState('');
     const [email, setEmail] = useState('');
     const [jabatan, setJabatan] = useState('');
     const [role, setRole] = useState('');
@@ -51,30 +51,30 @@ const UserFormModal: React.FC<UserFormModalProps> = ({
 
     const [roleMenuVisible, setRoleMenuVisible] = useState(false);
     const [jabatanMenuVisible, setJabatanMenuVisible] = useState(false);
-    const [filteredJabatanOptions, setFilteredJabatanOptions] = useState<string[]>(JABATAN_OPTIONS);
+    const [filteredJabatanOptions, setFilteredJabatanOptions] = useState<string[]>(UNIT_KERJA_OPTIONS);
 
     useEffect(() => {
         if (visible) {
             if (initialUser) {
                 setIsEditMode(true);
-                setOriginalNik(initialUser.nik);
+                setOriginalNip(initialUser.nip);
                 setNama(initialUser.nama);
-                setNik(initialUser.nik);
+                setNip(initialUser.nip);
                 setEmail(initialUser.email);
                 setJabatan(initialUser.jabatan || '');
                 setRole(initialUser.role);
                 setPassword(''); // Password should not be pre-filled for security
             } else {
                 setIsEditMode(false);
-                setOriginalNik(undefined);
+                setOriginalNip(undefined);
                 setNama('');
-                setNik('');
+                setNip('');
                 setEmail('');
                 setJabatan('');
                 setRole('');
                 setPassword('');
             }
-            setFilteredJabatanOptions(JABATAN_OPTIONS); // Reset filter when modal opens
+            setFilteredJabatanOptions(UNIT_KERJA_OPTIONS); // Reset filter when modal opens
         }
     }, [visible, initialUser]);
 
@@ -82,25 +82,25 @@ const UserFormModal: React.FC<UserFormModalProps> = ({
         setJabatan(text);
         if (text) {
             setFilteredJabatanOptions(
-                JABATAN_OPTIONS.filter(option =>
+                UNIT_KERJA_OPTIONS.filter(option =>
                     option.toLowerCase().includes(text.toLowerCase())
                 )
             );
         } else {
-            setFilteredJabatanOptions(JABATAN_OPTIONS);
+            setFilteredJabatanOptions(UNIT_KERJA_OPTIONS);
         }
         setJabatanMenuVisible(true); // Show menu when typing
     };
 
     const handleSavePress = async () => {
-        if (!nama || !nik || !email || !role || !jabatan || (!isEditMode && !password)) {
+        if (!nama || !nip || !email || !role || !jabatan || (!isEditMode && !password)) {
             setSnackbar({ visible: true, message: 'Harap isi semua field yang wajib diisi' });
             return;
         }
 
         const userData: Partial<User> & { password?: string } = {
             nama,
-            nik,
+            nip,
             email,
             jabatan,
             role,
@@ -110,7 +110,7 @@ const UserFormModal: React.FC<UserFormModalProps> = ({
             userData.password = password;
         }
 
-        await onSave(userData, isEditMode, originalNik);
+        await onSave(userData, isEditMode, originalNip);
     };
 
     return (
@@ -119,7 +119,7 @@ const UserFormModal: React.FC<UserFormModalProps> = ({
                 <ScrollView showsVerticalScrollIndicator={false}>
                     <Text style={styles.modalTitle}>{isEditMode ? 'Edit Pengguna' : 'Tambah Pengguna'}</Text>
                     <TextInput mode="outlined" label="Nama Lengkap" value={nama} onChangeText={setNama} style={styles.input} />
-                    <TextInput mode="outlined" label="NIK" value={nik} onChangeText={setNik} keyboardType="numeric" style={styles.input} disabled={isEditMode} />
+                    <TextInput mode="outlined" label="NIP" value={nip} onChangeText={setNip} keyboardType="numeric" style={styles.input} disabled={isEditMode} />
                     <TextInput mode="outlined" label="Email" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" style={styles.input} />
 
                     {/* Jabatan Input with Search and Select */}

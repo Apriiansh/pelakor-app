@@ -17,34 +17,49 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width, height } = Dimensions.get('window');
 
-// Storage abstraction for cross-platform compatibility
+// Improved Storage abstraction with error handling
 const Storage = {
-    async setItem(key: string, value: string) {
-        if (Platform.OS === 'web') {
-            localStorage.setItem(key, value);
-        } else {
-            await AsyncStorage.setItem(key, value);
+    async setItem(key: string, value: string): Promise<void> {
+        try {
+            if (Platform.OS === 'web') {
+                localStorage.setItem(key, value);
+            } else {
+                await AsyncStorage.setItem(key, value);
+            }
+        } catch (error) {
+            console.error('Storage setItem error:', error);
+            throw error;
         }
     },
 
     async getItem(key: string): Promise<string | null> {
-        if (Platform.OS === 'web') {
-            return localStorage.getItem(key);
-        } else {
-            return await AsyncStorage.getItem(key);
+        try {
+            if (Platform.OS === 'web') {
+                return localStorage.getItem(key);
+            } else {
+                return await AsyncStorage.getItem(key);
+            }
+        } catch (error) {
+            console.error('Storage getItem error:', error);
+            return null;
         }
     },
 
-    async removeItem(key: string) {
-        if (Platform.OS === 'web') {
-            localStorage.removeItem(key);
-        } else {
-            await AsyncStorage.removeItem(key);
+    async removeItem(key: string): Promise<void> {
+        try {
+            if (Platform.OS === 'web') {
+                localStorage.removeItem(key);
+            } else {
+                await AsyncStorage.removeItem(key);
+            }
+        } catch (error) {
+            console.error('Storage removeItem error:', error);
+            throw error;
         }
     }
 };
 
-// Cross-platform alert
+// Enhanced cross-platform alert
 const showAlert = (title: string, message: string, onPress?: () => void) => {
     if (Platform.OS === 'web') {
         const confirmed = window.confirm(`${title}\n\n${message}`);
@@ -62,6 +77,45 @@ const showAlert = (title: string, message: string, onPress?: () => void) => {
     }
 };
 
+// Enhanced API login function with timeout and better error handling
+const apiLogin = async (data: { identifier: string; password: string }): Promise<Response> => {
+    const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
+
+    if (!API_BASE_URL) {
+        throw new Error('API URL tidak dikonfigurasi. Periksa file .env');
+    }
+
+    console.log('Attempting login with URL:', `${API_BASE_URL}/api/auth/login`);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+            },
+            body: JSON.stringify(data),
+            signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+        return response;
+    } catch (error) {
+        clearTimeout(timeoutId);
+
+        if (error instanceof Error) {
+            if (error.name === 'AbortError') {
+                throw new Error('Request timeout. Periksa koneksi internet dan server.');
+            }
+            throw error;
+        }
+        throw new Error('Network error occurred');
+    }
+};
+
 export default function LoginScreen() {
     const router = useRouter();
     const insets = useSafeAreaInsets();
@@ -70,61 +124,45 @@ export default function LoginScreen() {
     const [isLoading, setIsLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
 
-    // Get API URL with fallback
-    const getApiUrl = () => {
-        const apiUrl = process.env.EXPO_PUBLIC_API_URL;
-
-        if (!apiUrl) {
-            console.warn('EXPO_PUBLIC_API_URL not found, using fallback');
-            // Fallback URL - sesuaikan dengan setup development Anda
-            return Platform.OS === 'web'
-                ? 'http://localhost:3001' // Untuk web development
-                : 'http://192.168.1.100:3001'; // Untuk mobile (ganti dengan IP server Anda)
-        }
-
-        return apiUrl;
-    };
-
     const handleLogin = async () => {
-        // Validasi input dasar
+        // Basic input validation
         if (!identifier.trim() || !password.trim()) {
             showAlert(
                 'Input Tidak Valid',
-                'NIK/Email dan password wajib diisi.'
+                'NIP/Email dan password wajib diisi.'
             );
             return;
         }
 
+        console.log('Starting login process...');
         setIsLoading(true);
 
         try {
-            const apiUrl = getApiUrl();
-            console.log('Attempting login with API URL:', apiUrl);
-
-            const response = await fetch(`${apiUrl}/api/auth/login`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    // Add CORS headers if needed
-                    'Accept': 'application/json',
-                },
-                body: JSON.stringify({
-                    identifier: identifier.trim(),
-                    password
-                }),
+            console.log('Sending login request...');
+            const response = await apiLogin({
+                identifier: identifier.trim(),
+                password,
             });
 
-            console.log('Response status:', response.status);
+            console.log('Login response status:', response.status);
 
             if (!response.ok) {
-                const errorData = await response.json().catch(() => null);
-                throw new Error(errorData?.message || `HTTP error! status: ${response.status}`);
+                let errorMessage = 'Login gagal';
+                try {
+                    const errorData = await response.json();
+                    errorMessage = errorData?.message || `HTTP error! status: ${response.status}`;
+                } catch (parseError) {
+                    errorMessage = `HTTP error! status: ${response.status}`;
+                }
+                throw new Error(errorMessage);
             }
 
             const data = await response.json();
-            console.log('Login response:', { success: data.success, user: data.user?.nama });
+            console.log('Login response data:', { ...data, token: data.token ? '[HIDDEN]' : 'null' });
 
             if (data.success && data.token) {
+                console.log('Login successful, storing user data...');
+
                 // Store user data using cross-platform storage
                 await Storage.setItem('userToken', data.token);
                 await Storage.setItem('userData', JSON.stringify(data.user));
@@ -133,7 +171,7 @@ export default function LoginScreen() {
                 const jabatan = data.user.jabatan;
                 const role = data.user.role;
 
-                // rute
+                // Determine route based on role
                 let route: string;
                 switch (role) {
                     case 'bupati':
@@ -153,40 +191,49 @@ export default function LoginScreen() {
                         break;
                 }
 
+                console.log('Navigating to route:', route);
+
                 showAlert(
-                    '✅ Login Berhasil',
+                    'Login Berhasil',
                     `Selamat datang, ${data.user?.nama || 'User'}! Anda masuk sebagai ${jabatan || role}`,
                     () => {
                         setTimeout(() => {
                             try {
-                                router.replace(route as never);
+                                router.replace(route as any);
                             } catch (routeError) {
                                 console.error('Route error:', routeError);
-                                router.replace('/(app)/(pegawai)/home' as never);
+                                router.replace('/(app)/(pegawai)/home' as any);
                             }
                         }, 100);
                     }
                 );
             } else {
+                console.log('Login failed - invalid response:', data);
                 showAlert(
-                    '❌ Login Gagal',
+                    'Login Gagal',
                     data.message || 'Login tidak berhasil. Silakan coba lagi.'
                 );
             }
         } catch (error: any) {
-            console.error('Login error:', error);
+            console.error('Login error details:', {
+                name: error?.name,
+                message: error?.message,
+                stack: error?.stack
+            });
 
             let errorMessage = 'Terjadi kesalahan saat login.';
 
-            if (error.message?.includes('NetworkError') || error.message?.includes('fetch')) {
-                errorMessage = 'Tidak dapat terhubung ke server. Pastikan:\n\n• Server backend sudah aktif\n• Perangkat terhubung ke jaringan yang sama\n• Koneksi internet stabil';
-            } else if (error.message?.includes('CORS')) {
-                errorMessage = 'Error CORS. Pastikan server backend mengizinkan akses dari web.';
+            if (error.message?.includes('timeout') || error.message?.includes('Request timeout')) {
+                errorMessage = 'Request timeout. Periksa koneksi internet dan pastikan server aktif.';
+            } else if (error.message?.includes('Network request failed') || error.message?.includes('fetch')) {
+                errorMessage = 'Tidak dapat terhubung ke server. Pastikan server backend aktif dan koneksi internet stabil.';
+            } else if (error.message?.includes('API URL tidak dikonfigurasi')) {
+                errorMessage = 'Konfigurasi API tidak ditemukan. Hubungi administrator.';
             } else if (error.message) {
                 errorMessage = error.message;
             }
 
-            showAlert('🔌 Error Koneksi', errorMessage);
+            showAlert('Error Koneksi', errorMessage);
         } finally {
             setIsLoading(false);
         }
@@ -238,9 +285,9 @@ export default function LoginScreen() {
 
                             {/* Login Form */}
                             <View style={styles.formContainer}>
-                                {/* NIK/Email Input */}
+                                {/* NIP/Email Input */}
                                 <View style={styles.inputGroup}>
-                                    <Text style={styles.inputLabel}>NIK atau Email</Text>
+                                    <Text style={styles.inputLabel}>NIP atau Email</Text>
                                     <TextInput
                                         value={identifier}
                                         onChangeText={setIdentifier}
@@ -249,7 +296,7 @@ export default function LoginScreen() {
                                         autoCapitalize="none"
                                         keyboardType="email-address"
                                         disabled={isLoading}
-                                        placeholder="Masukkan NIK atau Email"
+                                        placeholder="Masukkan NIP atau Email"
                                         underlineColor="transparent"
                                         activeUnderlineColor="#6366f1"
                                         contentStyle={styles.inputContent}
