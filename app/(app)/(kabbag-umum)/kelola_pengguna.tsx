@@ -24,6 +24,12 @@ import {
 
 
 
+const cleanUnitKerja = (unitKerja: string | undefined | null): string => {
+    if (!unitKerja) return '';
+    // Membersihkan format array postgresql seperti {"Nilai"} atau {Nilai}
+    return unitKerja.replace(/^{"?(.*?)"?}$/, '$1');
+};
+
 const UserCard = ({ user, onEdit, onDelete }: { user: User; onEdit: (user: User) => void; onDelete: (user: User) => void }) => {
     const { theme } = useAppTheme();
     const styles = createStyles(theme);
@@ -40,24 +46,11 @@ const UserCard = ({ user, onEdit, onDelete }: { user: User; onEdit: (user: User)
     return (
         <Card style={styles.card}>
             <Card.Content style={styles.cardContent}>
-                <Avatar.Text
-                    size={48}
-                    label={getInitials(user.nama)}
-                    style={styles.avatar}
-                />
+                
                 <View style={styles.userInfo}>
                     <Text style={styles.userName}>{user.nama}</Text>
                     <Text style={styles.userJabatan}>{user.jabatan || 'Jabatan tidak diatur'}</Text>
-                    <Text style={styles.userJabatan}>{(Array.isArray(user.unit_kerja) ? user.unit_kerja.join(', ') : user.unit_kerja) || 'Unit Kerja tidak diatur'}</Text>
-                    <View style={styles.chipContainer}>
-                        <Chip
-                            icon="account-tie"
-                            style={[styles.chip, { backgroundColor: theme.colors.primaryContainer }]}
-                            textStyle={[styles.chipText, { color: theme.colors.onPrimaryContainer }]}
-                        >
-                            {ROLE_OPTIONS[user.role] || user.role}
-                        </Chip>
-                    </View>
+                    <Text style={styles.userJabatan}>{cleanUnitKerja(user.unit_kerja) || 'Unit Kerja tidak diatur'}</Text>
                 </View>
                 <View style={styles.actions}>
                     <IconButton icon="pencil-outline" size={24} onPress={() => onEdit(user)} />
@@ -147,7 +140,7 @@ export default function KelolaPenggunaScreen() {
         setNik(user.nik);
         setEmail(user.email);
         setJabatan(user.jabatan || '');
-        setUnitKerja((Array.isArray(user.unit_kerja) ? user.unit_kerja[0] : user.unit_kerja) || '');
+        setUnitKerja(cleanUnitKerja(user.unit_kerja));
         setRole(user.role);
         setIsEditMode(true);
         setModalVisible(true);
@@ -313,9 +306,19 @@ export default function KelolaPenggunaScreen() {
                                     {ROLE_OPTIONS[role] || 'Pilih Role'}
                                 </Button>
                             }>
+                            <Menu.Item onPress={() => { setRole('bupati'); setMenuVisible(false); }} title="Bupati" />
+                            <Menu.Item onPress={() => { setRole('wakil_bupati'); setMenuVisible(false); }} title="Wakil Bupati" />
+                            <Menu.Item onPress={() => { setRole('sekda'); setMenuVisible(false); }} title="Sekretariat Daerah" />
+                            <Menu.Item onPress={() => { setRole('asisten'); setMenuVisible(false); }} title="Asisten" />
+                            <Menu.Item onPress={() => { setRole('staf_ahli'); setMenuVisible(false); }} title="Staf Ahli" />
+                            
+
+                            {/* <Menu.Item onPress={() => { setRole('subbag_umum'); setMenuVisible(false); }} title="Sub Bagian Umum" />
+                            <Menu.Item onPress={() => { setRole('kabbag_umum'); setMenuVisible(false); }} title="Kepala Bagian Umum" /> */}
+
                             <Menu.Item onPress={() => { setRole('pegawai'); setMenuVisible(false); }} title="Pegawai" />
-                            <Menu.Item onPress={() => { setRole('subbag_umum'); setMenuVisible(false); }} title="Sub Bagian Umum" />
-                            <Menu.Item onPress={() => { setRole('kabbag_umum'); setMenuVisible(false); }} title="Kepala Bagian Umum" />
+                                
+                            <Menu.Item onPress={() => { setRole('opd'); setMenuVisible(false); }} title="Pegawai Organisasi Perangkat Daerah" />
                         </Menu>
 
                         <TextInput mode="outlined" label={isEditMode ? "Password Baru (Opsional)" : "Password"} secureTextEntry onChangeText={setPassword} style={styles.input} />
@@ -441,19 +444,18 @@ const createStyles = (theme: any) => StyleSheet.create({
     cardContent: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 16,
-    },
-    avatar: {
-        marginRight: 16,
-        backgroundColor: theme.colors.primary,
+        padding: 20,
     },
     userInfo: {
         flex: 1,
+        marginLeft: 16,
+        
     },
     userName: {
         fontSize: 16,
         fontWeight: 'bold',
         color: theme.colors.onSurface,
+        
     },
     userJabatan: {
         fontSize: 14,

@@ -133,14 +133,20 @@ export default function LoginScreen() {
                 const jabatan = data.user.jabatan;
                 const role = data.user.role;
 
-                // Tentukan rute berdasarkan peran
+                // rute
                 let route: string;
                 switch (role) {
+                    case 'bupati':
+                        route = '/(app)/(bupati)/home';
+                        break;
                     case 'kabbag_umum':
                         route = '/(app)/(kabbag-umum)/home';
                         break;
                     case 'subbag_umum':
                         route = '/(app)/(subbag-umum)/home';
+                        break;
+                    case 'pelapor':
+                        route = '/(app)/(pelapor)/home';
                         break;
                     default:
                         route = '/(app)/(pegawai)/home';
@@ -151,13 +157,11 @@ export default function LoginScreen() {
                     '✅ Login Berhasil',
                     `Selamat datang, ${data.user?.nama || 'User'}! Anda masuk sebagai ${jabatan || role}`,
                     () => {
-                        // Use a timeout to ensure storage is complete
                         setTimeout(() => {
                             try {
                                 router.replace(route as never);
                             } catch (routeError) {
                                 console.error('Route error:', routeError);
-                                // Fallback route
                                 router.replace('/(app)/(pegawai)/home' as never);
                             }
                         }, 100);

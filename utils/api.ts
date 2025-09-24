@@ -274,7 +274,7 @@ export interface User {
     nama: string;
     nik: string;
     email: string;
-    role: 'kabbag_umum' | 'subbag_umum' | 'pegawai';
+    role: string;
     jabatan?: string;
     unit_kerja?: string;
 }

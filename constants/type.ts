@@ -1,4 +1,6 @@
 export const UNIT_KERJA_OPTIONS = [
+  'Pemerintahan Daerah',
+  'Sekretariat Daerah',
   'Bagian Tata Pemerintahan & Kerjasama',
   'Bagian Kesejahteraan Rakyat',
   'Bagian Hukum',
@@ -37,7 +39,7 @@ export const UNIT_KERJA_OPTIONS = [
   'Dinas Transmigrasi dan Tenaga Kerja',
   'Inspektorat Daerah',
   'Satuan Polisi Pamong Praja',
-  'Sekretariat Daerah',
+  
   'Sekretariat DPRD',
 ];
 
@@ -47,7 +49,11 @@ export const ROLE_OPTIONS: { [key: string]: string } = {
     kabbag_umum: 'Kepala Bagian Umum',
     bupati: 'Bupati',
     wakil_bupati: 'Wakil Bupati',
-    sekda: 'Sekretaris Daerah',
-    kadis: 'Kepala Dinas',
-    kabid: 'Kepala Bidang',
+    sekda: 'Sekretariat Daerah',
+    as_i: 'Asisten I',
+    as_ii: 'Asisten II',
+    as_iii: 'Asisten III',
+    staf_ahli: 'Staf Ahli',
+    kabbag: 'Pegawai Organisasi Perangkat Daerah',
+    opd: 'Pegawai Organisasi Perangkat Daerah',
 };
