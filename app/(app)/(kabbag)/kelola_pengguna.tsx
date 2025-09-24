@@ -4,7 +4,7 @@ import { ApiError, createUser, deleteUser, getUsers, updateUser, User } from '@/
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, FlatList, RefreshControl, StyleSheet, View, ScrollView } from 'react-native';
+import { Alert, FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 import {
     ActivityIndicator,
     Avatar,
@@ -20,8 +20,9 @@ import {
     Snackbar,
     Text,
     TextInput,
-    HelperText,
 } from 'react-native-paper';
+
+
 
 const cleanUnitKerja = (unitKerja: string | undefined | null): string => {
     if (!unitKerja) return '';
@@ -33,17 +34,23 @@ const UserCard = ({ user, onEdit, onDelete }: { user: User; onEdit: (user: User)
     const { theme } = useAppTheme();
     const styles = createStyles(theme);
 
+    const getInitials = (name: string) => {
+        return name
+            .split(' ')
+            .map(word => word.charAt(0))
+            .join('')
+            .substring(0, 2)
+            .toUpperCase();
+    };
+
     return (
         <Card style={styles.card}>
             <Card.Content style={styles.cardContent}>
+
                 <View style={styles.userInfo}>
                     <Text style={styles.userName}>{user.nama}</Text>
-                    <Text style={styles.userDetail}>NIP: {user.nip}</Text>
                     <Text style={styles.userJabatan}>{user.jabatan || 'Jabatan tidak diatur'}</Text>
                     <Text style={styles.userJabatan}>{cleanUnitKerja(user.unit_kerja) || 'Unit Kerja tidak diatur'}</Text>
-                    <Chip style={styles.roleChip} textStyle={styles.chipText}>
-                        {ROLE_OPTIONS[user.role] || user.role}
-                    </Chip>
                 </View>
                 <View style={styles.actions}>
                     <IconButton icon="pencil-outline" size={24} onPress={() => onEdit(user)} />
@@ -53,6 +60,7 @@ const UserCard = ({ user, onEdit, onDelete }: { user: User; onEdit: (user: User)
         </Card>
     );
 };
+
 
 export default function KelolaPenggunaScreen() {
     const router = useRouter();
@@ -67,21 +75,18 @@ export default function KelolaPenggunaScreen() {
     const [isEditMode, setIsEditMode] = useState(false);
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
     const [snackbar, setSnackbar] = useState({ visible: false, message: '' });
+    const [menuVisible, setMenuVisible] = useState(false);
     const [unitKerjaModalVisible, setUnitKerjaModalVisible] = useState(false);
-    const [roleModalVisible, setRoleModalVisible] = useState(false);
     const [unitKerjaSearch, setUnitKerjaSearch] = useState('');
-    const [isPasswordVisible, setIsPasswordVisible] = useState(false);
 
-    // Form state - Fixed with proper initialization
-    const [formData, setFormData] = useState({
-        nama: '',
-        nip: '',
-        email: '',
-        jabatan: '',
-        unit_kerja: '',
-        role: '',
-        password: ''
-    });
+    // Form state
+    const [nama, setNama] = useState('');
+    const [nip, setNip] = useState('');
+    const [email, setEmail] = useState('');
+    const [jabatan, setJabatan] = useState('');
+    const [unit_kerja, setUnitKerja] = useState('');
+    const [role, setRole] = useState('');
+    const [password, setPassword] = useState('');
 
     const fetchUsers = useCallback(async () => {
         try {
@@ -109,16 +114,13 @@ export default function KelolaPenggunaScreen() {
     const clearForm = () => {
         setSelectedUser(null);
         setIsEditMode(false);
-        setFormData({
-            nama: '',
-            nip: '',
-            email: '',
-            jabatan: '',
-            unit_kerja: '',
-            role: '',
-            password: ''
-        });
-        setUnitKerjaSearch('');
+        setNama('');
+        setNip('');
+        setEmail('');
+        setJabatan('');
+        setUnitKerja('');
+        setRole('');
+        setPassword('');
     };
 
     const hideModal = () => {
@@ -134,15 +136,12 @@ export default function KelolaPenggunaScreen() {
 
     const handleEdit = (user: User) => {
         setSelectedUser(user);
-        setFormData({
-            nama: user.nama,
-            nip: user.nip,
-            email: user.email,
-            jabatan: user.jabatan || '',
-            unit_kerja: cleanUnitKerja(user.unit_kerja),
-            role: user.role,
-            password: ''
-        });
+        setNama(user.nama);
+        setNip(user.nip);
+        setEmail(user.email);
+        setJabatan(user.jabatan || '');
+        setUnitKerja(cleanUnitKerja(user.unit_kerja));
+        setRole(user.role);
         setIsEditMode(true);
         setModalVisible(true);
     };
@@ -158,7 +157,7 @@ export default function KelolaPenggunaScreen() {
                         try {
                             await deleteUser(user.nip);
                             setSnackbar({ visible: true, message: 'Pengguna berhasil dihapus' });
-                            fetchUsers();
+                            fetchUsers(); // Refresh list
                         } catch (error) {
                             const message = error instanceof ApiError ? error.message : 'Gagal menghapus pengguna';
                             setSnackbar({ visible: true, message });
@@ -169,52 +168,26 @@ export default function KelolaPenggunaScreen() {
         );
     };
 
-    const validateForm = () => {
-        const { nama, nip, email, jabatan, unit_kerja, role, password } = formData;
-
-        if (!nama.trim()) return 'Nama wajib diisi';
-        if (!nip.trim()) return 'NIP wajib diisi';
-        if (!email.trim()) return 'Email wajib diisi';
-        if (!jabatan.trim()) return 'Jabatan wajib diisi';
-        if (!unit_kerja.trim()) return 'Unit kerja wajib diisi';
-        if (!role) return 'Role wajib dipilih';
-        if (!isEditMode && !password.trim()) return 'Password wajib diisi';
-
-        // Validate email format
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) return 'Format email tidak valid';
-
-        // Validate NIP (should be numeric and reasonable length)
-        if (!/^\d+$/.test(nip)) return 'NIP harus berupa angka';
-        if (nip.length < 8) return 'NIP minimal 8 digit';
-
-        return null;
-    };
-
     const handleSave = async () => {
-        const validationError = validateForm();
-        if (validationError) {
-            setSnackbar({ visible: true, message: validationError });
+        if (!nama || !nip || !email || !role || !jabatan || !unit_kerja || (!isEditMode && !password)) {
+            setSnackbar({ visible: true, message: 'Harap isi semua field yang wajib diisi' });
             return;
         }
 
         const userData = {
-            nama: formData.nama.trim(),
-            nip: formData.nip.trim(), // Backend expects 'nip'
-            email: formData.email.trim().toLowerCase(),
-            jabatan: formData.jabatan.trim(),
-            unit_kerja: formData.unit_kerja.trim(),
-            role: formData.role,
-            ...(formData.password.trim() && { password: formData.password.trim() })
+            nama,
+            nip,
+            email,
+            jabatan,
+            unit_kerja,
+            role,
+            password: password || undefined,
         };
-
-        // Debug log
-        console.log('Sending user data:', { ...userData, password: userData.password ? '[HIDDEN]' : 'undefined' });
 
         setSaving(true);
         try {
             if (isEditMode && selectedUser) {
-                const { nip, ...updateData } = userData;
+                const { nip: _nip, ...updateData } = userData;
                 await updateUser(selectedUser.nip, updateData);
                 setSnackbar({ visible: true, message: 'Pengguna berhasil diperbarui' });
             } else {
@@ -224,37 +197,11 @@ export default function KelolaPenggunaScreen() {
             hideModal();
             fetchUsers();
         } catch (error) {
-            console.error('Save user error:', error);
-            let message = 'Gagal menyimpan pengguna';
-
-            if (error instanceof ApiError) {
-                if (error.status === 400) {
-                    message = error.message || 'Data tidak valid. Periksa kembali input Anda.';
-                } else if (error.status === 409) {
-                    message = 'NIP atau email sudah terdaftar';
-                } else {
-                    message = error.message;
-                }
-            }
-
+            const message = error instanceof ApiError ? error.message : `Gagal menyimpan pengguna`;
             setSnackbar({ visible: true, message });
         } finally {
             setSaving(false);
         }
-    };
-
-    const updateFormData = (field: string, value: string) => {
-        setFormData(prev => ({
-            ...prev,
-            [field]: value
-        }));
-    };
-
-    // Get filtered role options (exclude kabbag_umum and subbag_umum)
-    const getFilteredRoleOptions = () => {
-        return Object.entries(ROLE_OPTIONS).filter(([key]) =>
-            key !== 'kabbag_umum' && key !== 'subbag_umum'
-        );
     };
 
     if (loading && !refreshing) {
@@ -326,116 +273,64 @@ export default function KelolaPenggunaScreen() {
                 />
 
                 <Portal>
-                    {/* Main Form Modal */}
                     <Modal visible={modalVisible} onDismiss={hideModal} contentContainerStyle={[styles.modalContainer, { backgroundColor: theme.colors.surface }]}>
-                        <ScrollView showsVerticalScrollIndicator={false}>
-                            <Text style={styles.modalTitle}>{isEditMode ? 'Edit Pengguna' : 'Tambah Pengguna'}</Text>
+                        <Text style={styles.modalTitle}>{isEditMode ? 'Edit Pengguna' : 'Tambah Pengguna'}</Text>
+                        <TextInput mode="outlined" label="Nama Lengkap" value={nama} onChangeText={setNama} style={styles.input} />
+                        <TextInput mode="outlined" label="NIP" value={nip} onChangeText={setNip} keyboardType="numeric" style={styles.input} disabled={isEditMode} />
+                        <TextInput mode="outlined" label="Jabatan" value={jabatan} onChangeText={setJabatan} style={styles.input} />
+                        <Button
+                            mode="outlined"
+                            onPress={() => {
+                                setUnitKerjaSearch(unit_kerja);
+                                setUnitKerjaModalVisible(true);
+                            }}
+                            style={styles.input}
+                            contentStyle={styles.menuAnchor}
+                            icon="chevron-down"
+                        >
+                            {unit_kerja || 'Pilih Unit Kerja'}
+                        </Button>
+                        <TextInput mode="outlined" label="Email" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" style={styles.input} />
 
-                            <TextInput
-                                mode="outlined"
-                                label="Nama Lengkap"
-                                value={formData.nama}
-                                onChangeText={(value) => updateFormData('nama', value)}
-                                style={styles.input}
-                                error={!formData.nama.trim() && formData.nama !== ''}
-                            />
-
-                            <View>
-                                <TextInput
+                        <Menu
+                            visible={menuVisible}
+                            onDismiss={() => setMenuVisible(false)}
+                            anchor={
+                                <Button
                                     mode="outlined"
-                                    label="NIP"
-                                    value={formData.nip}
-                                    onChangeText={(value) => updateFormData('nip', value)}
-                                    keyboardType="numeric"
+                                    onPress={() => setMenuVisible(true)}
                                     style={styles.input}
-                                    disabled={isEditMode}
-                                    error={!formData.nip.trim() && formData.nip !== ''}
-                                />
-                                <HelperText type="info" visible={!isEditMode}>
-                                    Minimal 8 digit
-                                </HelperText>
-                            </View>
+                                    contentStyle={styles.menuAnchor}
+                                    icon="chevron-down"
+                                >
+                                    {ROLE_OPTIONS[role] || 'Pilih Role'}
+                                </Button>
+                            }>
+                            <Menu.Item onPress={() => { setRole('bupati'); setMenuVisible(false); }} title="Bupati" />
+                            <Menu.Item onPress={() => { setRole('wakil_bupati'); setMenuVisible(false); }} title="Wakil Bupati" />
+                            <Menu.Item onPress={() => { setRole('sekda'); setMenuVisible(false); }} title="Sekretariat Daerah" />
+                            <Menu.Item onPress={() => { setRole('asisten'); setMenuVisible(false); }} title="Asisten" />
+                            <Menu.Item onPress={() => { setRole('staf_ahli'); setMenuVisible(false); }} title="Staf Ahli" />
 
-                            <TextInput
-                                mode="outlined"
-                                label="Jabatan"
-                                value={formData.jabatan}
-                                onChangeText={(value) => updateFormData('jabatan', value)}
-                                style={styles.input}
-                                error={!formData.jabatan.trim() && formData.jabatan !== ''}
-                            />
 
-                            {/* Unit Kerja Picker */}
-                            <Button
-                                mode="outlined"
-                                onPress={() => {
-                                    setUnitKerjaSearch(formData.unit_kerja);
-                                    setUnitKerjaModalVisible(true);
-                                }}
-                                style={styles.input}
-                                contentStyle={styles.menuAnchor}
-                                icon="chevron-down"
-                            >
-                                {formData.unit_kerja || 'Pilih Unit Kerja'}
-                            </Button>
+                            {/* <Menu.Item onPress={() => { setRole('subbag_umum'); setMenuVisible(false); }} title="Sub Bagian Umum" />
+                            <Menu.Item onPress={() => { setRole('kabbag_umum'); setMenuVisible(false); }} title="Kepala Bagian Umum" /> */}
 
-                            <TextInput
-                                mode="outlined"
-                                label="Email"
-                                value={formData.email}
-                                onChangeText={(value) => updateFormData('email', value)}
-                                keyboardType="email-address"
-                                autoCapitalize="none"
-                                style={styles.input}
-                                error={!formData.email.trim() && formData.email !== ''}
-                            />
+                            <Menu.Item onPress={() => { setRole('pegawai'); setMenuVisible(false); }} title="Pegawai" />
 
-                            {/* Role Picker */}
-                            <Button
-                                mode="outlined"
-                                onPress={() => setRoleModalVisible(true)}
-                                style={styles.input}
-                                contentStyle={styles.menuAnchor}
-                                icon="chevron-down"
-                            >
-                                {ROLE_OPTIONS[formData.role] || 'Pilih Role'}
-                            </Button>
+                            <Menu.Item onPress={() => { setRole('opd'); setMenuVisible(false); }} title="Pegawai Organisasi Perangkat Daerah" />
+                        </Menu>
 
-                            <TextInput
-                                mode="outlined"
-                                label={isEditMode ? "Password Baru (Opsional)" : "Password"}
-                                secureTextEntry={!isPasswordVisible}
-                                value={formData.password}
-                                onChangeText={(value) => updateFormData('password', value)}
-                                style={styles.input}
-                                error={!isEditMode && !formData.password.trim() && formData.password !== ''}
-                                right={<TextInput.Icon icon={isPasswordVisible ? "eye-off" : "eye"} onPress={() => setIsPasswordVisible(!isPasswordVisible)} />}
-                            />
-
-                            <Button
-                                mode="contained"
-                                onPress={handleSave}
-                                style={styles.saveButton}
-                                loading={saving}
-                                disabled={saving}
-                            >
-                                {saving ? 'Menyimpan...' : 'Simpan'}
-                            </Button>
-
-                            <Button onPress={hideModal} disabled={saving}>
-                                Batal
-                            </Button>
-                        </ScrollView>
+                        <TextInput mode="outlined" label={isEditMode ? "Password Baru (Opsional)" : "Password"} secureTextEntry onChangeText={setPassword} style={styles.input} />
+                        <Button mode="contained" onPress={handleSave} style={styles.saveButton} loading={saving} disabled={saving}>
+                            Simpan
+                        </Button>
+                        <Button onPress={hideModal} disabled={saving}>
+                            Batal
+                        </Button>
                     </Modal>
-
-                    {/* Unit Kerja Selection Modal */}
-                    <Modal
-                        visible={unitKerjaModalVisible}
-                        onDismiss={() => setUnitKerjaModalVisible(false)}
-                        contentContainerStyle={[styles.modalContainer, { backgroundColor: theme.colors.surface }]}
-                    >
+                    <Modal visible={unitKerjaModalVisible} onDismiss={() => setUnitKerjaModalVisible(false)} contentContainerStyle={[styles.modalContainer, { backgroundColor: theme.colors.surface }]}>
                         <Text style={styles.modalTitle}>Pilih atau Masukkan Unit Kerja</Text>
-
                         <TextInput
                             mode="outlined"
                             label="Cari atau buat baru"
@@ -443,7 +338,6 @@ export default function KelolaPenggunaScreen() {
                             onChangeText={setUnitKerjaSearch}
                             style={styles.input}
                         />
-
                         <FlatList
                             data={
                                 unitKerjaSearch
@@ -452,81 +346,37 @@ export default function KelolaPenggunaScreen() {
                             }
                             keyExtractor={item => item}
                             renderItem={({ item }) => (
-                                <Button
-                                    mode="text"
+                                <Menu.Item
                                     onPress={() => {
-                                        updateFormData('unit_kerja', item);
+                                        setUnitKerja(item);
                                         setUnitKerjaModalVisible(false);
                                     }}
-                                    style={styles.listItem}
-                                    contentStyle={styles.listItemContent}
-                                >
-                                    {item}
-                                </Button>
+                                    title={item}
+                                    style={{ backgroundColor: theme.colors.surfaceVariant, borderRadius: 8, marginVertical: 2 }}
+                                />
                             )}
-                            style={styles.selectionList}
+                            style={{ maxHeight: 300, marginBottom: 12 }}
                             nestedScrollEnabled
                         />
-
                         <Button
                             mode="contained"
                             onPress={() => {
-                                updateFormData('unit_kerja', unitKerjaSearch);
+                                setUnitKerja(unitKerjaSearch);
                                 setUnitKerjaModalVisible(false);
                             }}
                             style={styles.saveButton}
-                            disabled={!unitKerjaSearch.trim()}
                         >
-                            Pilih "{unitKerjaSearch}"
+                            Pilih
                         </Button>
-
                         <Button onPress={() => setUnitKerjaModalVisible(false)}>
                             Batal
                         </Button>
                     </Modal>
-
-                    {/* Role Selection Modal */}
-                    <Modal
-                        visible={roleModalVisible}
-                        onDismiss={() => setRoleModalVisible(false)}
-                        contentContainerStyle={[styles.modalContainer, { backgroundColor: theme.colors.surface }]}
-                    >
-                        <Text style={styles.modalTitle}>Pilih Role</Text>
-
-                        <FlatList
-                            data={getFilteredRoleOptions()}
-                            keyExtractor={([key]) => key}
-                            renderItem={({ item: [key, value] }) => (
-                                <Button
-                                    mode={formData.role === key ? "contained" : "text"}
-                                    onPress={() => {
-                                        updateFormData('role', key);
-                                        setRoleModalVisible(false);
-                                    }}
-                                    style={[
-                                        styles.listItem,
-                                        formData.role === key && { backgroundColor: theme.colors.primary }
-                                    ]}
-                                    contentStyle={styles.listItemContent}
-                                    labelStyle={formData.role === key ? { color: 'white' } : undefined}
-                                >
-                                    {value}
-                                </Button>
-                            )}
-                            style={styles.selectionList}
-                        />
-
-                        <Button onPress={() => setRoleModalVisible(false)}>
-                            Batal
-                        </Button>
-                    </Modal>
                 </Portal>
-
                 <Snackbar
                     visible={snackbar.visible}
                     onDismiss={() => setSnackbar({ ...snackbar, visible: false })}
-                    duration={4000}
-                >
+                    duration={3000}>
                     {snackbar.message}
                 </Snackbar>
             </View>
@@ -598,27 +448,28 @@ const createStyles = (theme: any) => StyleSheet.create({
     },
     userInfo: {
         flex: 1,
+        marginLeft: 16,
+
     },
     userName: {
         fontSize: 16,
         fontWeight: 'bold',
         color: theme.colors.onSurface,
-        marginBottom: 4,
-    },
-    userDetail: {
-        fontSize: 13,
-        color: theme.colors.onSurfaceVariant,
-        marginBottom: 2,
+
     },
     userJabatan: {
         fontSize: 14,
         color: theme.colors.onSurfaceVariant,
-        marginBottom: 2,
+        marginTop: 2,
     },
-    roleChip: {
-        alignSelf: 'flex-start',
+    chipContainer: {
+        flexDirection: 'row',
         marginTop: 8,
+    },
+    chip: {
         height: 28,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     chipText: {
         fontSize: 12,
@@ -631,6 +482,7 @@ const createStyles = (theme: any) => StyleSheet.create({
         position: 'absolute',
         marginRight: 16,
         marginBottom: 120,
+
         right: 2,
         bottom: 0,
         borderRadius: 28,
@@ -639,7 +491,6 @@ const createStyles = (theme: any) => StyleSheet.create({
         padding: 20,
         margin: 20,
         borderRadius: 12,
-        maxHeight: '85%',
     },
     modalTitle: {
         color: theme.colors.onSurface,
@@ -651,6 +502,8 @@ const createStyles = (theme: any) => StyleSheet.create({
     input: {
         marginBottom: 12,
         backgroundColor: theme.colors.surface,
+        color: theme.colors.onSurface,
+        borderRadius: 12,
     },
     menuAnchor: {
         justifyContent: 'flex-start',
@@ -683,18 +536,5 @@ const createStyles = (theme: any) => StyleSheet.create({
         textAlign: 'center',
         lineHeight: 20,
     },
-    selectionList: {
-        maxHeight: 300,
-        marginBottom: 12,
-    },
-    listItem: {
-        marginVertical: 2,
-        borderRadius: 8,
-        backgroundColor: theme.colors.surfaceVariant,
-    },
-    listItemContent: {
-        justifyContent: 'flex-start',
-        paddingVertical: 12,
-        paddingHorizontal: 16,
-    },
 });
+

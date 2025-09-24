@@ -5,16 +5,25 @@ import { Text, Card, Button, IconButton } from 'react-native-paper';
 import { useAppTheme } from '@/context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { getLaporanSelesai, Laporan } from '@/utils/api';
+import { getLaporanSelesai, Laporan, getDisposisiHistory, getTindakLanjutHistory, DisposisiHistory, TindakLanjutHistory } from '@/utils/api';
 import { LinearGradient } from 'expo-linear-gradient';
+import { DetailLaporanDialog } from '@/components/laporan/DetailLaporanDialog';
+import { format, parseISO } from 'date-fns';
+import { id } from 'date-fns/locale';
 
-export default function ArsipScreen() {
+export default function LaporanBupatiScreen() {
   const { theme } = useAppTheme();
   const router = useRouter();
   
   const [laporan, setLaporan] = useState<Laporan[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+
+  const [selectedLaporan, setSelectedLaporan] = useState<Laporan | null>(null);
+  const [disposisiHistory, setDisposisiHistory] = useState<DisposisiHistory[]>([]);
+  const [tindakLanjutHistory, setTindakLanjutHistory] = useState<TindakLanjutHistory[]>([]);
+  const [isDetailVisible, setDetailVisible] = useState(false);
+  const [loadingDetail, setLoadingDetail] = useState(false);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -35,8 +44,52 @@ export default function ArsipScreen() {
     }, [loadData])
   );
 
+  const openDetail = useCallback(async (laporan: Laporan): Promise<void> => {
+    setSelectedLaporan(laporan);
+    setDetailVisible(true);
+    setLoadingDetail(true);
+    try {
+        const [disposisi, tindakLanjut] = await Promise.all([
+            getDisposisiHistory(laporan.id_laporan.toString()).catch(() => []),
+            getTindakLanjutHistory(laporan.id_laporan.toString()).catch(() => [])
+        ]);
+        setDisposisiHistory(disposisi);
+        setTindakLanjutHistory(tindakLanjut);
+    } catch (error) {
+        console.error('Error fetching detail:', error);
+    } finally {
+        setLoadingDetail(false);
+    }
+  }, []);
+
+  const closeDetail = useCallback(() => {
+      setDetailVisible(false);
+      setSelectedLaporan(null);
+      setDisposisiHistory([]);
+      setTindakLanjutHistory([]);
+  }, []);
+
+  const getStatusColor = (status: string): string => {
+    const statusColors: { [key: string]: string } = {
+        diajukan: theme.colors.primary,
+        diproses: '#FF9800',
+        ditolak: theme.colors.error,
+        ditindaklanjuti: '#2196F3',
+        selesai: '#4CAF50',
+    };
+    return statusColors[status] || theme.colors.outline;
+  };
+
+  const formatDate = (dateString: string): string => {
+      try {
+          return format(parseISO(dateString), 'd MMM yyyy, HH:mm', { locale: id });
+      } catch {
+          return dateString;
+      }
+  };
+
   const renderItem = ({ item }: { item: Laporan }) => (
-    <Card style={[styles.card, { backgroundColor: theme.colors.surface }]} onPress={() => router.push(`/modal?id_laporan=${item.id_laporan}&from=/(app)/(kabbag-umum)/arsip`)}>
+    <Card style={[styles.card, { backgroundColor: theme.colors.surface }]} onPress={() => openDetail(item)}>
       <Card.Content>
         <View style={styles.itemContent}>
           <Ionicons name="checkmark-done-circle" size={24} color={theme.colors.success} style={styles.icon} />
@@ -57,7 +110,7 @@ export default function ArsipScreen() {
     return (
       <View style={[styles.centerContainer, { backgroundColor: theme.colors.background }]}>
         <ActivityIndicator size="large" color={theme.colors.primary} />
-        <Text style={{ marginTop: 10, color: theme.colors.onSurfaceVariant }}>Memuat data arsip...</Text>
+        <Text style={{ marginTop: 10, color: theme.colors.onSurfaceVariant }}>Memuat data laporan...</Text>
       </View>
     );
   }
@@ -87,14 +140,14 @@ export default function ArsipScreen() {
                         icon="arrow-left"
                         size={24}
                         iconColor="white"
-                        onPress={() => router.back()}
+                        onPress={() => router.replace('/(app)/(bupati)/home')}
                         style={styles.backButton}
                     />
-                    <Text style={styles.headerTitle}>Arsip Laporan</Text>
+                    <Text style={styles.headerTitle}>Laporan Selesai</Text>
                     <View style={styles.placeholder} />
                 </View>
                 <Text style={styles.headerSubtitle}>
-                    Daftar semua laporan yang telah selesai
+                    Daftar semua laporan yang telah selesai di lingkup kabupaten
                 </Text>
             </View>
         </LinearGradient>
@@ -106,12 +159,27 @@ export default function ArsipScreen() {
         contentContainerStyle={styles.listContainer}
         ListEmptyComponent={() => (
           <View style={styles.centerContainer}>
-            <Text style={{ color: theme.colors.onSurfaceVariant }}>Belum ada laporan yang diarsipkan.</Text>
+            <Text style={{ color: theme.colors.onSurfaceVariant }}>Belum ada laporan yang selesai.</Text>
           </View>
         )}
         onRefresh={loadData}
         refreshing={loading}
       />
+
+      {selectedLaporan && (
+          <DetailLaporanDialog
+              visible={isDetailVisible}
+              laporan={selectedLaporan}
+              disposisiHistory={disposisiHistory}
+              tindakLanjutHistory={tindakLanjutHistory}
+              loading={loadingDetail}
+              onDismiss={closeDetail}
+              onEdit={() => {}}
+              onDelete={() => {}}
+              getStatusColor={getStatusColor}
+              formatDate={formatDate}
+          />
+      )}
     </View>
   );
 }

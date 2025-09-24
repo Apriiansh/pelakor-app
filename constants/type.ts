@@ -44,7 +44,7 @@ export const UNIT_KERJA_OPTIONS = [
 ];
 
 export const ROLE_OPTIONS: { [key: string]: string } = {
-    pegawai: 'Pegawai',
+    pelapor: 'Pegawai',
     subbag_umum: 'Sub Bagian Umum',
     kabbag_umum: 'Kepala Bagian Umum',
     bupati: 'Bupati',
@@ -54,6 +54,5 @@ export const ROLE_OPTIONS: { [key: string]: string } = {
     as_ii: 'Asisten II',
     as_iii: 'Asisten III',
     staf_ahli: 'Staf Ahli',
-    kabbag: 'Pegawai Organisasi Perangkat Daerah',
-    opd: 'Pegawai Organisasi Perangkat Daerah',
+    kabbag: 'Kepala Bagian',
 };

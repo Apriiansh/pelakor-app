@@ -94,6 +94,19 @@ export default function KabbagUmumLayout() {
                       ),
                 }}
             />
+            <Tabs.Screen
+                name="laporan"
+                options={{
+                    title: 'Laporan',
+                    tabBarIcon: ({ color, focused }) => (
+                        <Ionicons
+                            name={focused ? "document" : "document-outline"}
+                            size={26}
+                            color={color}
+                        />
+                      ),
+                }}
+            />
         </Tabs>
     );
 }
