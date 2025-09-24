@@ -39,12 +39,14 @@ export default function StartPage() {
     if (status === 'unauthenticated') {
       router.replace('/(auth)/login');
     } else if (status === 'authenticated') {
-      let homeRoute: any = '/(app)/(pegawai)/home';
+      let homeRoute: any = '/(app)/(pelapor)/home';
       
       if (role === 'kabbag_umum') {
         homeRoute = '/(app)/(kabbag-umum)/home';
       } else if (role === 'subbag_umum') {
         homeRoute = '/(app)/(subbag-umum)/home';
+      } else if (role === 'kabbag') {
+        homeRoute = '/(app)/(kabbag)/home';
       }
       
       router.replace(homeRoute);

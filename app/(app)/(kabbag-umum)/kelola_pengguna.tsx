@@ -41,9 +41,9 @@ const UserCard = ({ user, onEdit, onDelete }: { user: User; onEdit: (user: User)
                     <Text style={styles.userDetail}>NIP: {user.nip}</Text>
                     <Text style={styles.userJabatan}>{user.jabatan || 'Jabatan tidak diatur'}</Text>
                     <Text style={styles.userJabatan}>{cleanUnitKerja(user.unit_kerja) || 'Unit Kerja tidak diatur'}</Text>
-                    <Chip style={styles.roleChip} textStyle={styles.chipText}>
+                    {/* <Chip style={styles.roleChip} textStyle={styles.chipText}>
                         {ROLE_OPTIONS[user.role] || user.role}
-                    </Chip>
+                    </Chip> */}
                 </View>
                 <View style={styles.actions}>
                     <IconButton icon="pencil-outline" size={24} onPress={() => onEdit(user)} />
@@ -351,9 +351,6 @@ export default function KelolaPenggunaScreen() {
                                     disabled={isEditMode}
                                     error={!formData.nip.trim() && formData.nip !== ''}
                                 />
-                                <HelperText type="info" visible={!isEditMode}>
-                                    Minimal 8 digit
-                                </HelperText>
                             </View>
 
                             <TextInput

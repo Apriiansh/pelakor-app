@@ -10,7 +10,7 @@ import { ThemeSettings } from '@/components/ThemeSettings';
 // Ganti dengan alamat IP backend Anda
 const API_URL = `${process.env.EXPO_PUBLIC_API_URL}`;
 
-export default function ProfilPegawai() {
+export default function ProfilPelapor() {
     const [user, setUser] = useState<{ nama: string; nip: string; email: string; jabatan: String; role: string } | null>(null);
     const [loading, setLoading] = useState(true);
     const [themeModalVisible, setThemeModalVisible] = useState(false);

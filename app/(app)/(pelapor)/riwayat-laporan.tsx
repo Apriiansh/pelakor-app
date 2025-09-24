@@ -267,7 +267,7 @@ export default function RiwayatLaporanScreen(): JSX.Element {
                 {searchQuery || statusFilter !== 'semua' ? 'Coba ubah filter atau kata kunci pencarian' : 'Buat laporan pertama Anda dengan menekan tombol +'}
             </Text>
             {!searchQuery && statusFilter === 'semua' && (
-                <Button mode="contained" onPress={() => router.push('/(app)/(pegawai)/buat-laporan')} style={styles.createButton} icon="plus">
+                <Button mode="contained" onPress={() => router.push('/(app)/(pelapor)/buat-laporan')} style={styles.createButton} icon="plus">
                     Buat Laporan
                 </Button>
             )}

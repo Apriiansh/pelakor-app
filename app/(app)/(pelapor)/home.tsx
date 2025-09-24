@@ -30,7 +30,7 @@ const quickActions = [
 ];
 // --- END DUMMY DATA ---
 
-export default function OpdHomeScreen() {
+export default function PelaporHomeScreen() {
     const [user, setUser] = useState<{ nama: string; jabatan: string; avatar?: string } | null>(null);
     const [currentTime, setCurrentTime] = useState(new Date());
     const [refreshing, setRefreshing] = useState(false);
@@ -121,10 +121,10 @@ export default function OpdHomeScreen() {
     // IMPROVEMENT: Gunakan useCallback untuk optimasi performa
     const handleQuickActionPress = useCallback((action: typeof quickActions[0]) => {
         if (action.action === 'create') {
-            router.push('/(app)/(opd)/buat-laporan');
+            router.push('/(app)/(pelapor)/buat-laporan');
         } else if (action.action === 'template' && action.template) {
             router.push({
-                pathname: '/(app)/(opd)/buat-laporan',
+                pathname: '/(app)/(pelapor)/buat-laporan',
                 params: { title: action.template.title, category: action.template.category },
             });
         }
@@ -282,7 +282,7 @@ export default function OpdHomeScreen() {
                             <View>
                                 <Text style={styles.greeting}>{getGreeting()}</Text>
                                 <Text style={styles.userName}>{user?.nama || 'Pengguna'}</Text>
-                                <Text style={styles.userJabatan}>{user?.jabatan || 'Pegawai'}</Text>
+                                <Text style={styles.userJabatan}>{user?.jabatan || 'Pelapor'}</Text>
                             </View>
                         </View>
                         <View style={styles.headerActions}>
@@ -315,7 +315,7 @@ export default function OpdHomeScreen() {
             <View style={styles.recentSection}>
                 <View style={styles.recentHeader}>
                     <Text style={styles.sectionTitle}>Laporan Terbaru</Text>
-                    <Button mode="text" onPress={() => router.push('/(app)/(opd)/riwayat-laporan')} labelStyle={styles.viewAllText}>
+                    <Button mode="text" onPress={() => router.push('/(app)/(pelapor)/riwayat-laporan')} labelStyle={styles.viewAllText}>
                         Lihat Semua
                     </Button>
                 </View>

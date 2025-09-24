@@ -327,7 +327,8 @@ const getStyles = (theme: CustomTheme) => StyleSheet.create({
         color: theme.colors.onSurface,
     },
     scrollArea: {
-        maxHeight: '70%',
+        maxHeight: '80%',
+        paddingTop: 16
     },
     dialogContent: {
         paddingTop: 0,

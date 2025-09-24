@@ -6,7 +6,7 @@ import { HapticTab } from '@/components/haptic-tab';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppTheme } from '@/context/ThemeContext';
 
-export default function OpdLayout() {
+export default function PelaporLayout() {
   const insets = useSafeAreaInsets();
   const { theme } = useAppTheme();
 

@@ -38,13 +38,15 @@ export default function AppLayout() {
       // Redirect to the login page if not authenticated.
       router.replace('/(auth)/login');
     } else if (status === 'authenticated' && !inAppGroup) {
-      let homeRoute = '/(app)/(pegawai)/home'; 
+      let homeRoute = '/(app)/(pelapor)/home'; 
       if (role === 'bupati') {
         homeRoute = '/(app)/(bupati)/home';
       } else if (role === 'kabbag_umum') {
         homeRoute = '/(app)/(kabbag-umum)/home';
       } else if (role === 'subbag_umum') {
         homeRoute = '/(app)/(subbag-umum)/home';
+      } else if (role === 'kabbag') {
+        homeRoute = '/(app)/(kabbag)/home';
       }
       router.replace(homeRoute as any);
     }

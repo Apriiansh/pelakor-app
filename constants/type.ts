@@ -44,7 +44,7 @@ export const UNIT_KERJA_OPTIONS = [
 ];
 
 export const ROLE_OPTIONS: { [key: string]: string } = {
-    pelapor: 'Pegawai',
+    pelapor: 'pelapor',
     subbag_umum: 'Sub Bagian Umum',
     kabbag_umum: 'Kepala Bagian Umum',
     bupati: 'Bupati',

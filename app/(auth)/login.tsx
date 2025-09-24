@@ -183,11 +183,14 @@ export default function LoginScreen() {
                     case 'subbag_umum':
                         route = '/(app)/(subbag-umum)/home';
                         break;
+                    case 'kabbag':
+                        route = '/(app)/(kabbag)/home';
+                        break;
                     case 'pelapor':
                         route = '/(app)/(pelapor)/home';
                         break;
                     default:
-                        route = '/(app)/(pegawai)/home';
+                        route = '/(app)/(pelapor)/home';
                         break;
                 }
 
@@ -202,7 +205,7 @@ export default function LoginScreen() {
                                 router.replace(route as any);
                             } catch (routeError) {
                                 console.error('Route error:', routeError);
-                                router.replace('/(app)/(pegawai)/home' as any);
+                                router.replace('/(app)/(pelapor)/home' as any);
                             }
                         }, 100);
                     }

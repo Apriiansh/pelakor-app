@@ -478,11 +478,11 @@ export const getKabbagUmum = () => {
 };
 
 /**
- * GET /api/users/pegawai
- * Ambil daftar pegawai
+ * GET /api/users/pelapor
+ * Ambil daftar pelapor
  */
-export const getPegawaiUsers = () => {
-    return apiFetch('/api/users/pegawai');
+export const getPelaporUsers = () => {
+    return apiFetch('/api/users/pelapor');
 };
 
 /**
