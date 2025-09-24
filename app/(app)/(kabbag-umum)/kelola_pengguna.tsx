@@ -194,16 +194,15 @@ export default function KelolaPenggunaScreen() {
         setSaving(true);
         try {
             if (isEditMode && selectedUser) {
-                // For edit, we don't send NIK in the body and password is optional
                 const { nik: _nik, ...updateData } = userData;
                 await updateUser(selectedUser.nik, updateData);
                 setSnackbar({ visible: true, message: 'Pengguna berhasil diperbarui' });
             } else {
-                await createUser(userData as any); // 'as any' because password is not optional in createUser
+                await createUser(userData as any); 
                 setSnackbar({ visible: true, message: 'Pengguna berhasil ditambahkan' });
             }
             hideModal();
-            fetchUsers(); // Refresh list
+            fetchUsers(); 
         } catch (error) {
             const message = error instanceof ApiError ? error.message : `Gagal menyimpan pengguna`;
             setSnackbar({ visible: true, message });
