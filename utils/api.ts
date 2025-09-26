@@ -319,8 +319,16 @@ export const updateTindakLanjut = (id_tindak_lanjut: string, data: {
     });
 };
 
-export const getLaporanSelesai = () => {
-    return apiFetch('/api/laporan/selesai');
+export const getLaporanSelesai = (filters?: { startDate?: string; endDate?: string }) => {
+    const params = new URLSearchParams();
+    if (filters?.startDate) {
+        params.append('startDate', filters.startDate);
+    }
+    if (filters?.endDate) {
+        params.append('endDate', filters.endDate);
+    }
+    const queryString = params.toString();
+    return apiFetch(`/api/laporan/selesai${queryString ? `?${queryString}` : ''}`);
 };
 
 /**

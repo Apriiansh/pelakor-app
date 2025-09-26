@@ -47,6 +47,8 @@ export default function StartPage() {
         homeRoute = '/(app)/(subbag-umum)/home';
       } else if (role === 'kabbag') {
         homeRoute = '/(app)/(kabbag)/home';
+      } else if (role === 'bupati') {
+        homeRoute = '/(app)/(bupati)/home';
       }
       
       router.replace(homeRoute);

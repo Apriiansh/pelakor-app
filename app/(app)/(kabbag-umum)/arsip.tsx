@@ -1,13 +1,15 @@
-
 import React, { useState, useCallback, useMemo } from 'react';
-import { View, StyleSheet, FlatList, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { Text, Card, Button, IconButton, Searchbar } from 'react-native-paper';
 import { useAppTheme } from '@/context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
+
 import { getLaporanSelesai, Laporan, getDisposisiHistory, getTindakLanjutHistory, DisposisiHistory, TindakLanjutHistory } from '@/utils/api';
 import { LinearGradient } from 'expo-linear-gradient';
 import { DetailLaporanDialog } from '@/components/laporan/DetailLaporanDialog';
+import DateTimePickerModal from "react-native-modal-datetime-picker";
+import { generateLaporanPDF } from '@/utils/pdfExports';
 
 export default function ArsipScreen() {
   const { theme } = useAppTheme();
@@ -18,19 +20,35 @@ export default function ArsipScreen() {
   const [error, setError] = useState<Error | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
+  // State for date filtering
+  const [startDate, setStartDate] = useState<Date | null>(null);
+  const [endDate, setEndDate] = useState<Date | null>(null);
+  const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
+  const [datePickerMode, setDatePickerMode] = useState<'start' | 'end'>('start');
+
   const [dialogVisible, setDialogVisible] = useState(false);
   const [selectedLaporan, setSelectedLaporan] = useState<Laporan | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [disposisiHistory, setDisposisiHistory] = useState<DisposisiHistory[]>([]);
   const [tindakLanjutHistory, setTindakLanjutHistory] = useState<TindakLanjutHistory[]>([]);
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (currentStartDate: Date | null = null, currentEndDate: Date | null = null) => {
     setLoading(true);
     setError(null);
     try {
-      const data = await getLaporanSelesai();
+      const apiFilters: { startDate?: string; endDate?: string } = {};
+      if (currentStartDate) {
+        apiFilters.startDate = currentStartDate.toISOString().split('T')[0];
+      }
+      if (currentEndDate) {
+        apiFilters.endDate = currentEndDate.toISOString().split('T')[0];
+      }
+
+      console.log('Loading data with filters:', apiFilters);
+      const data = await getLaporanSelesai(apiFilters);
       setLaporan(data || []);
     } catch (e) {
+      console.error('Error loading data:', e);
       setError(e as Error);
     } finally {
       setLoading(false);
@@ -39,9 +57,104 @@ export default function ArsipScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      loadData();
+      loadData(); // Initial load without filters
     }, [loadData])
   );
+
+  const handleFilterPress = useCallback(() => {
+    // Validasi tanggal
+    if (startDate && endDate && startDate > endDate) {
+      // Anda bisa menambahkan alert atau toast di sini
+      console.warn('Tanggal mulai tidak boleh lebih dari tanggal akhir');
+      return;
+    }
+    loadData(startDate, endDate);
+  }, [startDate, endDate, loadData]);
+
+  const handleResetPress = useCallback(() => {
+    setStartDate(null);
+    setEndDate(null);
+    loadData(); // Load without filters
+  }, [loadData]);
+
+  // --- Date Picker Handlers ---
+  const showDatePicker = useCallback((mode: 'start' | 'end') => {
+    setDatePickerMode(mode);
+    setDatePickerVisibility(true);
+  }, []);
+
+  const hideDatePicker = useCallback(() => {
+    setDatePickerVisibility(false);
+  }, []);
+
+  const handleConfirmDate = useCallback((date: Date) => {
+    if (datePickerMode === 'start') {
+      setStartDate(date);
+      // Reset end date if it's before the new start date
+      if (endDate && date > endDate) {
+        setEndDate(null);
+      }
+    } else {
+      // Validate that end date is not before start date
+      if (startDate && date < startDate) {
+        console.warn('Tanggal akhir tidak boleh sebelum tanggal mulai');
+        hideDatePicker();
+        return;
+      }
+      setEndDate(date);
+      // Auto apply filter when end date is selected
+      setTimeout(() => {
+        loadData(startDate, date);
+      }, 100);
+    }
+    hideDatePicker();
+  }, [datePickerMode, endDate, startDate, hideDatePicker, loadData]);
+  // ---------------------------
+
+  const [isExporting, setIsExporting] = useState(false);
+
+  const filteredLaporan = useMemo(() => {
+    if (!searchQuery) {
+      return laporan;
+    }
+    return laporan.filter((item) =>
+      item.judul_laporan.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.pelapor?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [laporan, searchQuery]);
+
+  const formatShortDate = useCallback((date: Date | null) => {
+    if (!date) return 'Pilih Tanggal';
+    return date.toLocaleDateString('id-ID', { year: 'numeric', month: 'short', day: 'numeric' });
+  }, []);
+
+  const handleExportPDF = useCallback(async () => {
+    if (isExporting) return;
+    setIsExporting(true);
+
+    let title = 'Laporan Selesai';
+    if (startDate && endDate) {
+      title = `Laporan Selesai Periode ${formatShortDate(startDate)} - ${formatShortDate(endDate)}`;
+    } else if (startDate) {
+      title = `Laporan Selesai Sejak ${formatShortDate(startDate)}`;
+    } else if (endDate) {
+      title = `Laporan Selesai Hingga ${formatShortDate(endDate)}`;
+    }
+
+    try {
+      await generateLaporanPDF({
+        laporan: filteredLaporan,
+        title,
+        startDate,
+        endDate,
+      });
+    } catch (error) {
+      console.error('Failed to export PDF:', error);
+      // Optionally, show an alert to the user
+    } finally {
+      setIsExporting(false);
+    }
+  }, [filteredLaporan, startDate, endDate, isExporting, formatShortDate]);
 
   const handleItemPress = useCallback(async (item: Laporan) => {
     setSelectedLaporan(item);
@@ -56,37 +169,28 @@ export default function ArsipScreen() {
       setTindakLanjutHistory(tindakLanjutData || []);
     } catch (err) {
       console.error("Failed to load detail history:", err);
-      // Optionally set an error state for the dialog
     } finally {
       setDetailLoading(false);
     }
   }, []);
 
-  const handleDismissDialog = () => {
+  const handleDismissDialog = useCallback(() => {
     setDialogVisible(false);
     setSelectedLaporan(null);
     setDisposisiHistory([]);
     setTindakLanjutHistory([]);
-  };
+  }, []);
 
-  const filteredLaporan = useMemo(() => {
-    if (!searchQuery) {
-      return laporan;
-    }
-    return laporan.filter((item) =>
-      item.judul_laporan.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.pelapor?.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }, [laporan, searchQuery]);
-
-  const formatDate = (dateString: string) => {
+  const formatDate = useCallback((dateString: string) => {
     return new Date(dateString).toLocaleDateString('id-ID', {
       year: 'numeric', month: 'long', day: 'numeric',
       hour: '2-digit', minute: '2-digit'
     });
-  };
+  }, []);
 
-  const getStatusColor = (status: string) => {
+  
+
+  const getStatusColor = useCallback((status: string) => {
     switch (status) {
       case 'diajukan': return theme.colors.warning;
       case 'didisposisikan': return theme.colors.backdrop;
@@ -94,9 +198,9 @@ export default function ArsipScreen() {
       case 'selesai': return theme.colors.success;
       default: return theme.colors.onSurface;
     }
-  };
+  }, [theme.colors]);
 
-  const renderItem = ({ item }: { item: Laporan }) => (
+  const renderItem = useCallback(({ item }: { item: Laporan }) => (
     <Card style={[styles.card, { backgroundColor: theme.colors.surface }]} onPress={() => handleItemPress(item)}>
       <Card.Content>
         <View style={styles.itemContent}>
@@ -112,9 +216,9 @@ export default function ArsipScreen() {
         </View>
       </Card.Content>
     </Card>
-  );
+  ), [theme.colors, handleItemPress]);
 
-  if (loading) {
+  if (loading && !laporan.length) { // Show initial loading screen
     return (
       <View style={[styles.centerContainer, { backgroundColor: theme.colors.background }]}>
         <ActivityIndicator size="large" color={theme.colors.primary} />
@@ -127,7 +231,7 @@ export default function ArsipScreen() {
     return (
       <View style={[styles.centerContainer, { backgroundColor: theme.colors.background }]}>
         <Text style={{ marginBottom: 10, color: theme.colors.error }}>Gagal memuat data: {error.message}</Text>
-        <Button mode="contained" onPress={loadData}>
+        <Button mode="contained" onPress={() => loadData(startDate, endDate)}>
           Coba Lagi
         </Button>
       </View>
@@ -162,12 +266,45 @@ export default function ArsipScreen() {
 
       <View style={styles.searchContainer}>
         <Searchbar
-          placeholder="Cari laporan..."
+          placeholder="Cari judul atau nama pelapor..."
           onChangeText={setSearchQuery}
           value={searchQuery}
           style={styles.searchbar}
           elevation={1}
         />
+        <View style={styles.filterContainer}>
+          <TouchableOpacity
+            style={[styles.dateInput, { borderColor: theme.colors.outline }]}
+            onPress={() => showDatePicker('start')}
+          >
+            <Ionicons name="calendar-outline" size={20} color={theme.colors.primary} />
+            <Text style={{ color: theme.colors.onSurface }}>{formatShortDate(startDate)}</Text>
+          </TouchableOpacity>
+          <Text style={{ color: theme.colors.onSurfaceVariant }}> - </Text>
+          <TouchableOpacity
+            style={[styles.dateInput, { borderColor: theme.colors.outline }]}
+            onPress={() => showDatePicker('end')}
+          >
+            <Ionicons name="calendar-outline" size={20} color={theme.colors.primary} />
+            <Text style={{ color: theme.colors.onSurface }}>{formatShortDate(endDate)}</Text>
+          </TouchableOpacity>
+          <IconButton
+            icon="refresh"
+            size={20}
+            iconColor={theme.colors.primary}
+            style={styles.resetButton}
+            onPress={handleResetPress}
+            disabled={loading}
+          />
+          <IconButton
+            icon="download"
+            size={20}
+            iconColor={theme.colors.primary}
+            style={styles.resetButton}
+            onPress={handleExportPDF}
+            disabled={loading}
+          />
+        </View>
       </View>
 
       <FlatList
@@ -178,12 +315,20 @@ export default function ArsipScreen() {
         ListEmptyComponent={() => (
           <View style={styles.centerContainer}>
             <Text style={{ color: theme.colors.onSurfaceVariant }}>
-              {searchQuery ? 'Laporan tidak ditemukan.' : 'Belum ada laporan yang diarsipkan.'}
+              {searchQuery || startDate || endDate ? 'Laporan tidak ditemukan.' : 'Belum ada laporan yang diarsipkan.'}
             </Text>
           </View>
         )}
-        onRefresh={loadData}
+        onRefresh={() => loadData(startDate, endDate)}
         refreshing={loading}
+      />
+
+      <DateTimePickerModal
+        isVisible={isDatePickerVisible}
+        mode="date"
+        onConfirm={handleConfirmDate}
+        onCancel={hideDatePicker}
+        maximumDate={new Date()} // Prevent selecting future dates
       />
 
       {selectedLaporan && (
@@ -194,8 +339,8 @@ export default function ArsipScreen() {
           tindakLanjutHistory={tindakLanjutHistory}
           loading={detailLoading}
           onDismiss={handleDismissDialog}
-          onEdit={() => {}} // Not applicable in archive
-          onDelete={() => {}} // Not applicable in archive
+          onEdit={() => { }} // Not applicable in archive
+          onDelete={() => { }} // Not applicable in archive
           getStatusColor={getStatusColor}
           formatDate={formatDate}
         />
@@ -250,10 +395,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: 8,
+    gap: 12
   },
   searchbar: {
     borderRadius: 12,
-    marginBottom: 16,
   },
   listContainer: {
     flexGrow: 1,
@@ -274,4 +419,23 @@ const styles = StyleSheet.create({
   textContainer: {
     flex: 1,
   },
+  filterContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  dateInput: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  resetButton: {
+    margin: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+  }
 });
