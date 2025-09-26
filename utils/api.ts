@@ -389,6 +389,8 @@ export interface Laporan {
     pelapor: string;
     created_at: string;
     updated_at: string;
+    tanggal_disposisi?: string;
+    tanggal_tindak_lanjut?: string[]; // Bisa jadi array tanggal
 }
 
 export interface DisposisiHistory {

@@ -1,6 +1,6 @@
 // utils/pdfExport.ts
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
-import { File, Paths, Directory } from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { Asset } from 'expo-asset';
 import { Laporan, DisposisiHistory, TindakLanjutHistory } from './api';
@@ -14,36 +14,30 @@ interface PDFExportOptions {
   endDate?: Date | null;
 }
 
-export const generateLaporanPDF = async (options: PDFExportOptions): Promise<void> => {
+export const generateLaporanPDF = async (options: PDFExportOptions): Promise<string> => {
   try {
-    // Create a new PDF document
     const pdfDoc = await PDFDocument.create();
-    
-    // Embed fonts
     const timesRoman = await pdfDoc.embedFont(StandardFonts.TimesRoman);
     const timesBold = await pdfDoc.embedFont(StandardFonts.TimesRomanBold);
-    
-    // Load and embed logo
+
     let logoImage;
     try {
       const logoAsset = Asset.fromModule(require('@/assets/images/logo-kabupaten-ogan-ilir.png'));
       await logoAsset.downloadAsync();
       const logoUri = logoAsset.localUri || logoAsset.uri;
 
-      const logoFIle = new File(logoUri);
-      const logoBase64 = await logoFIle.base64();
-
-      logoImage = await pdfDoc.embedPng(`data:image/png;base64,${logoBase64}`);
+      const base64Logo = await FileSystem.readAsStringAsync(logoUri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      logoImage = await pdfDoc.embedPng(`data:image/png;base64,${base64Logo}`);
     } catch (error) {
       console.warn('Failed to load logo:', error);
     }
 
-    // Add first page
-    let page = pdfDoc.addPage([595, 842]); // A4 size
+    let page = pdfDoc.addPage([842, 595]); 
     const { width, height } = page.getSize();
     let currentY = height - 50;
 
-    // Helper function to add new page if needed
     const checkAndAddNewPage = (requiredHeight: number) => {
       if (currentY - requiredHeight < 50) {
         page = pdfDoc.addPage([595, 842]);
@@ -53,7 +47,6 @@ export const generateLaporanPDF = async (options: PDFExportOptions): Promise<voi
       return false;
     };
 
-    // Header with logo and title
     if (logoImage) {
       const logoWidth = 60;
       const logoHeight = 60;
@@ -65,7 +58,6 @@ export const generateLaporanPDF = async (options: PDFExportOptions): Promise<voi
       });
     }
 
-    // Title
     page.drawText('PEMERINTAH KABUPATEN OGAN ILIR', {
       x: logoImage ? 130 : 50,
       y: currentY - 15,
@@ -92,7 +84,6 @@ export const generateLaporanPDF = async (options: PDFExportOptions): Promise<voi
 
     currentY -= 100;
 
-    // Add date and time
     const now = new Date();
     const dateStr = now.toLocaleDateString('id-ID', {
       year: 'numeric',
@@ -101,7 +92,7 @@ export const generateLaporanPDF = async (options: PDFExportOptions): Promise<voi
       hour: '2-digit',
       minute: '2-digit'
     });
-    
+
     page.drawText(`Tanggal Cetak: ${dateStr}`, {
       x: width - 200,
       y: currentY,
@@ -112,16 +103,13 @@ export const generateLaporanPDF = async (options: PDFExportOptions): Promise<voi
 
     currentY -= 30;
 
-    // Table headers
-    const tableHeaders = ['No', 'Judul Laporan', 'Pelapor', 'Status', 'Tgl Selesai'];
-    const colWidths = [40, 200, 120, 80, 100];
+    const tableHeaders = ['No', 'Judul Laporan', 'Pelapor', 'Tgl Disposisi', 'Tgl Tindak Lanjut', 'Tgl Selesai'];
+    const colWidths = [30, 250, 150, 100, 130, 100]; // Adjusted for new columns in landscape
     const tableStartX = 50;
     const rowHeight = 25;
 
-    // Draw table header
     checkAndAddNewPage(rowHeight * 2);
-    
-    // Header background
+
     page.drawRectangle({
       x: tableStartX - 5,
       y: currentY - rowHeight,
@@ -130,7 +118,6 @@ export const generateLaporanPDF = async (options: PDFExportOptions): Promise<voi
       color: rgb(0.9, 0.9, 0.9),
     });
 
-    // Header text
     let colX = tableStartX;
     tableHeaders.forEach((header, index) => {
       page.drawText(header, {
@@ -145,11 +132,9 @@ export const generateLaporanPDF = async (options: PDFExportOptions): Promise<voi
 
     currentY -= rowHeight;
 
-    // Draw table rows
     options.laporan.forEach((laporan, index) => {
       checkAndAddNewPage(rowHeight);
 
-      // Alternate row colors
       if (index % 2 === 0) {
         page.drawRectangle({
           x: tableStartX - 5,
@@ -160,13 +145,20 @@ export const generateLaporanPDF = async (options: PDFExportOptions): Promise<voi
         });
       }
 
-      // Row data
+      const formatDate = (dateStr: string | null | undefined) => {
+        if (!dateStr) return '-';
+        return new Date(dateStr).toLocaleDateString('id-ID');
+      };
+
+      const tindakLanjutDates = laporan.tanggal_tindak_lanjut?.map(d => formatDate(d)).join(', ') || '-';
+
       const rowData = [
         (index + 1).toString(),
-        truncateText(laporan.judul_laporan, 35),
-        truncateText(laporan.pelapor || '-', 20),
-        capitalizeFirst(laporan.status_laporan),
-        laporan.updated_at ? new Date(laporan.updated_at).toLocaleDateString('id-ID') : '-'
+        truncateText(laporan.judul_laporan, 40),
+        truncateText(laporan.pelapor || '-', 25),
+        formatDate(laporan.tanggal_disposisi),
+        truncateText(tindakLanjutDates, 20),
+        formatDate(laporan.updated_at)
       ];
 
       colX = tableStartX;
@@ -184,11 +176,9 @@ export const generateLaporanPDF = async (options: PDFExportOptions): Promise<voi
       currentY -= rowHeight;
     });
 
-    // Add table borders
     const tableWidth = colWidths.reduce((sum, w) => sum + w, 0);
     const tableHeight = (options.laporan.length + 1) * rowHeight;
-    
-    // Outer border
+
     page.drawRectangle({
       x: tableStartX - 5,
       y: currentY,
@@ -198,7 +188,6 @@ export const generateLaporanPDF = async (options: PDFExportOptions): Promise<voi
       borderWidth: 1,
     });
 
-    // Column dividers
     let dividerX = tableStartX - 5;
     colWidths.forEach(width => {
       dividerX += width;
@@ -214,7 +203,6 @@ export const generateLaporanPDF = async (options: PDFExportOptions): Promise<voi
 
     currentY -= 50;
 
-    // Summary
     checkAndAddNewPage(60);
     page.drawText(`Total Laporan: ${options.laporan.length}`, {
       x: tableStartX,
@@ -224,28 +212,25 @@ export const generateLaporanPDF = async (options: PDFExportOptions): Promise<voi
       color: rgb(0, 0, 0),
     });
 
-    // Footer
     const totalPages = pdfDoc.getPageCount();
     pdfDoc.getPages().forEach((p, pageIndex) => {
       p.drawText(`Halaman ${pageIndex + 1} dari ${totalPages}`, {
         x: width - 120,
-        y: 30,
+        y: 30, // Position relative to bottom
         size: 8,
         font: timesRoman,
         color: rgb(0.5, 0.5, 0.5),
       });
     });
 
-    // Save PDF
-    const pdfBytes = await pdfDoc.save();
+    const pdfBytes = await pdfDoc.saveAsBase64();
     const fileName = `laporan_${Date.now()}.pdf`;
-    const fileUri = `${Paths.document.uri}${fileName}`;
+    const fileUri = `${FileSystem.documentDirectory}${fileName}`;
 
-    // Write file
-    const pdfFile = new File(fileUri);
-    await pdfFile.write(pdfBytes);
+    await FileSystem.writeAsStringAsync(fileUri, pdfBytes, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
 
-    // Share PDF
     if (await Sharing.isAvailableAsync()) {
       await Sharing.shareAsync(fileUri, {
         mimeType: 'application/pdf',
@@ -255,13 +240,13 @@ export const generateLaporanPDF = async (options: PDFExportOptions): Promise<voi
       console.log('PDF saved to:', fileUri);
     }
 
+    return fileUri;
   } catch (error) {
     console.error('Error generating PDF:', error);
     throw new Error('Gagal membuat PDF: ' + (error instanceof Error ? error.message : 'Unknown error'));
   }
 };
 
-// Helper functions
 const truncateText = (text: string, maxLength: number): string => {
   if (text.length <= maxLength) return text;
   return text.substring(0, maxLength - 3) + '...';

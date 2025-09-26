@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { View, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, Platform, Alert } from 'react-native';
 import { Text, Card, Button, IconButton, Searchbar } from 'react-native-paper';
 import { useAppTheme } from '@/context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
@@ -44,11 +44,9 @@ export default function ArsipScreen() {
         apiFilters.endDate = currentEndDate.toISOString().split('T')[0];
       }
 
-      console.log('Loading data with filters:', apiFilters);
       const data = await getLaporanSelesai(apiFilters);
       setLaporan(data || []);
     } catch (e) {
-      console.error('Error loading data:', e);
       setError(e as Error);
     } finally {
       setLoading(false);
@@ -62,9 +60,7 @@ export default function ArsipScreen() {
   );
 
   const handleFilterPress = useCallback(() => {
-    // Validasi tanggal
     if (startDate && endDate && startDate > endDate) {
-      // Anda bisa menambahkan alert atau toast di sini
       console.warn('Tanggal mulai tidak boleh lebih dari tanggal akhir');
       return;
     }
@@ -74,10 +70,9 @@ export default function ArsipScreen() {
   const handleResetPress = useCallback(() => {
     setStartDate(null);
     setEndDate(null);
-    loadData(); // Load without filters
+    loadData();
   }, [loadData]);
 
-  // --- Date Picker Handlers ---
   const showDatePicker = useCallback((mode: 'start' | 'end') => {
     setDatePickerMode(mode);
     setDatePickerVisibility(true);
@@ -90,33 +85,27 @@ export default function ArsipScreen() {
   const handleConfirmDate = useCallback((date: Date) => {
     if (datePickerMode === 'start') {
       setStartDate(date);
-      // Reset end date if it's before the new start date
       if (endDate && date > endDate) {
         setEndDate(null);
       }
     } else {
-      // Validate that end date is not before start date
       if (startDate && date < startDate) {
         console.warn('Tanggal akhir tidak boleh sebelum tanggal mulai');
         hideDatePicker();
         return;
       }
       setEndDate(date);
-      // Auto apply filter when end date is selected
       setTimeout(() => {
         loadData(startDate, date);
       }, 100);
     }
     hideDatePicker();
   }, [datePickerMode, endDate, startDate, hideDatePicker, loadData]);
-  // ---------------------------
 
   const [isExporting, setIsExporting] = useState(false);
 
   const filteredLaporan = useMemo(() => {
-    if (!searchQuery) {
-      return laporan;
-    }
+    if (!searchQuery) return laporan;
     return laporan.filter((item) =>
       item.judul_laporan.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.pelapor?.toLowerCase().includes(searchQuery.toLowerCase())
@@ -150,7 +139,6 @@ export default function ArsipScreen() {
       });
     } catch (error) {
       console.error('Failed to export PDF:', error);
-      // Optionally, show an alert to the user
     } finally {
       setIsExporting(false);
     }
@@ -188,8 +176,6 @@ export default function ArsipScreen() {
     });
   }, []);
 
-  
-
   const getStatusColor = useCallback((status: string) => {
     switch (status) {
       case 'diajukan': return theme.colors.warning;
@@ -218,7 +204,7 @@ export default function ArsipScreen() {
     </Card>
   ), [theme.colors, handleItemPress]);
 
-  if (loading && !laporan.length) { // Show initial loading screen
+  if (loading && !laporan.length) {
     return (
       <View style={[styles.centerContainer, { backgroundColor: theme.colors.background }]}>
         <ActivityIndicator size="large" color={theme.colors.primary} />
@@ -302,7 +288,7 @@ export default function ArsipScreen() {
             iconColor={theme.colors.primary}
             style={styles.resetButton}
             onPress={handleExportPDF}
-            disabled={loading}
+            disabled={loading || isExporting}
           />
         </View>
       </View>
@@ -328,7 +314,7 @@ export default function ArsipScreen() {
         mode="date"
         onConfirm={handleConfirmDate}
         onCancel={hideDatePicker}
-        maximumDate={new Date()} // Prevent selecting future dates
+        maximumDate={new Date()}
       />
 
       {selectedLaporan && (
@@ -339,8 +325,8 @@ export default function ArsipScreen() {
           tindakLanjutHistory={tindakLanjutHistory}
           loading={detailLoading}
           onDismiss={handleDismissDialog}
-          onEdit={() => { }} // Not applicable in archive
-          onDelete={() => { }} // Not applicable in archive
+          onEdit={() => { }}
+          onDelete={() => { }}
           getStatusColor={getStatusColor}
           formatDate={formatDate}
         />
@@ -350,92 +336,23 @@ export default function ArsipScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  centerContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  headerGradient: {
-    paddingTop: 60,
-    paddingBottom: 24,
-    paddingHorizontal: 20,
-  },
-  headerContent: {
-    gap: 12,
-  },
-  headerTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  backButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    margin: 0,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: 'white',
-    flex: 1,
-    textAlign: 'center',
-  },
-  placeholder: {
-    width: 40,
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.8)',
-    textAlign: 'center',
-  },
-  searchContainer: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 8,
-    gap: 12
-  },
-  searchbar: {
-    borderRadius: 12,
-  },
-  listContainer: {
-    flexGrow: 1,
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-  },
-  card: {
-    marginBottom: 12,
-    borderRadius: 12,
-  },
-  itemContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  icon: {
-    marginRight: 16,
-  },
-  textContainer: {
-    flex: 1,
-  },
-  filterContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  dateInput: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  resetButton: {
-    margin: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.05)',
-  }
+  container: { flex: 1 },
+  centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
+  headerGradient: { paddingTop: 60, paddingBottom: 24, paddingHorizontal: 20 },
+  headerContent: { gap: 12 },
+  headerTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  backButton: { backgroundColor: 'rgba(255, 255, 255, 0.2)', margin: 0 },
+  headerTitle: { fontSize: 20, fontWeight: 'bold', color: 'white', flex: 1, textAlign: 'center' },
+  placeholder: { width: 40 },
+  headerSubtitle: { fontSize: 14, color: 'rgba(255, 255, 255, 0.8)', textAlign: 'center' },
+  searchContainer: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8, gap: 12 },
+  searchbar: { borderRadius: 12 },
+  listContainer: { flexGrow: 1, paddingHorizontal: 16, paddingBottom: 16 },
+  card: { marginBottom: 12, borderRadius: 12 },
+  itemContent: { flexDirection: 'row', alignItems: 'center' },
+  icon: { marginRight: 16 },
+  textContainer: { flex: 1 },
+  filterContainer: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  dateInput: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10 },
+  resetButton: { margin: 0, backgroundColor: 'rgba(0, 0, 0, 0.05)' }
 });
