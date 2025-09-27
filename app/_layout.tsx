@@ -3,6 +3,7 @@ import { Slot, SplashScreen } from 'expo-router';
 import { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider } from '@/context/ThemeContext';
+import 'react-datepicker/dist/react-datepicker.css';
 
 SplashScreen.preventAutoHideAsync();
 

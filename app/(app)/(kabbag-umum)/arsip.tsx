@@ -1,15 +1,26 @@
-import React, { useState, useCallback, useMemo } from 'react';
-import { View, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, Platform, Alert } from 'react-native';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import { View, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, Platform, Alert, TextInput } from 'react-native';
 import { Text, Card, Button, IconButton, Searchbar } from 'react-native-paper';
 import { useAppTheme } from '@/context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
+import { Asset } from 'expo-asset';
 
+import * as Sharing from 'expo-sharing';
 import { getLaporanSelesai, Laporan, getDisposisiHistory, getTindakLanjutHistory, DisposisiHistory, TindakLanjutHistory } from '@/utils/api';
 import { LinearGradient } from 'expo-linear-gradient';
 import { DetailLaporanDialog } from '@/components/laporan/DetailLaporanDialog';
+
 import DateTimePickerModal from "react-native-modal-datetime-picker";
-import { generateLaporanPDF } from '@/utils/pdfExports';
+import DatePicker from "react-datepicker";
+
+// Import PDF generator berdasarkan platform
+let generateLaporanPDF: any;
+if (Platform.OS === 'web') {
+  generateLaporanPDF = require('@/utils/pdfExports.web').generateLaporanPDF;
+} else {
+  generateLaporanPDF = require('@/utils/pdfExports').generateLaporanPDF;
+}
 
 export default function ArsipScreen() {
   const { theme } = useAppTheme();
@@ -24,6 +35,11 @@ export default function ArsipScreen() {
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
   const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
+
+  const hideDatePicker = useCallback(() => {
+    setDatePickerVisibility(false);
+  }, []);
+
   const [datePickerMode, setDatePickerMode] = useState<'start' | 'end'>('start');
 
   const [dialogVisible, setDialogVisible] = useState(false);
@@ -31,6 +47,7 @@ export default function ArsipScreen() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [disposisiHistory, setDisposisiHistory] = useState<DisposisiHistory[]>([]);
   const [tindakLanjutHistory, setTindakLanjutHistory] = useState<TindakLanjutHistory[]>([]);
+  const [canShare, setCanShare] = useState(false);
 
   const loadData = useCallback(async (currentStartDate: Date | null = null, currentEndDate: Date | null = null) => {
     setLoading(true);
@@ -59,6 +76,19 @@ export default function ArsipScreen() {
     }, [loadData])
   );
 
+  useEffect(() => {
+    const checkSharingAvailability = async () => {
+      if (Platform.OS !== 'web') {
+        const isAvailable = await Sharing.isAvailableAsync();
+        setCanShare(isAvailable);
+      } else {
+        // Di web, selalu bisa download
+        setCanShare(true);
+      }
+    };
+    checkSharingAvailability();
+  }, []);
+
   const handleFilterPress = useCallback(() => {
     if (startDate && endDate && startDate > endDate) {
       console.warn('Tanggal mulai tidak boleh lebih dari tanggal akhir');
@@ -66,6 +96,38 @@ export default function ArsipScreen() {
     }
     loadData(startDate, endDate);
   }, [startDate, endDate, loadData]);
+
+  const handleConfirmDate = useCallback((date: Date, mode?: 'start' | 'end') => {
+    const dateMode = mode || datePickerMode;
+
+    if (dateMode === 'start') {
+      setStartDate(date);
+      if (endDate && date > endDate) {
+        setEndDate(null);
+      }
+    } else {
+      if (startDate && date < startDate) {
+        const message = 'Tanggal akhir tidak boleh sebelum tanggal mulai';
+        if (Platform.OS === 'web') {
+          alert(message);
+        } else {
+          console.warn(message);
+        }
+        if (Platform.OS !== 'web') {
+          hideDatePicker();
+        }
+        return;
+      }
+      setEndDate(date);
+      setTimeout(() => {
+        loadData(startDate, date);
+      }, 100);
+    }
+
+    if (Platform.OS !== 'web') {
+      hideDatePicker();
+    }
+  }, [datePickerMode, endDate, startDate, hideDatePicker, loadData]);
 
   const handleResetPress = useCallback(() => {
     setStartDate(null);
@@ -77,30 +139,6 @@ export default function ArsipScreen() {
     setDatePickerMode(mode);
     setDatePickerVisibility(true);
   }, []);
-
-  const hideDatePicker = useCallback(() => {
-    setDatePickerVisibility(false);
-  }, []);
-
-  const handleConfirmDate = useCallback((date: Date) => {
-    if (datePickerMode === 'start') {
-      setStartDate(date);
-      if (endDate && date > endDate) {
-        setEndDate(null);
-      }
-    } else {
-      if (startDate && date < startDate) {
-        console.warn('Tanggal akhir tidak boleh sebelum tanggal mulai');
-        hideDatePicker();
-        return;
-      }
-      setEndDate(date);
-      setTimeout(() => {
-        loadData(startDate, date);
-      }, 100);
-    }
-    hideDatePicker();
-  }, [datePickerMode, endDate, startDate, hideDatePicker, loadData]);
 
   const [isExporting, setIsExporting] = useState(false);
 
@@ -119,6 +157,16 @@ export default function ArsipScreen() {
 
   const handleExportPDF = useCallback(async () => {
     if (isExporting) return;
+
+    if (!filteredLaporan || filteredLaporan.length === 0) {
+      if (Platform.OS === 'web') {
+        alert('Tidak ada data laporan untuk diekspor.');
+      } else {
+        Alert.alert('Perhatian', 'Tidak ada data laporan untuk diekspor.');
+      }
+      return;
+    }
+
     setIsExporting(true);
 
     let title = 'Laporan Selesai';
@@ -131,14 +179,52 @@ export default function ArsipScreen() {
     }
 
     try {
-      await generateLaporanPDF({
+      let exportOptions: any = {
         laporan: filteredLaporan,
         title,
         startDate,
         endDate,
+      };
+
+      if (Platform.OS === 'web') {
+        try {
+          const asset = Asset.fromModule(require('@/assets/images/logo-kabupaten-ogan-ilir.png'));
+          await asset.downloadAsync();
+
+          const response = await fetch(asset.uri);
+          const blob = await response.blob();
+
+          const reader = new FileReader();
+          reader.readAsDataURL(blob);
+
+          exportOptions.logoBase64 = await new Promise<string>((resolve, reject) => {
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.onerror = reject;
+          });
+
+        } catch (logoError) {
+          console.warn('Gagal memuat logo untuk PDF:', logoError);
+        }
+      }
+
+      const result = await generateLaporanPDF({
+        ...exportOptions
       });
+
+      if (Platform.OS === 'web') {
+        console.log('PDF export initiated for web:', result);
+      } else {
+        Alert.alert('Berhasil', 'File PDF berhasil dibuat dan siap dibagikan.');
+      }
     } catch (error) {
       console.error('Failed to export PDF:', error);
+      const errorMessage = 'Gagal membuat PDF: ' + (error instanceof Error ? error.message : 'Unknown error');
+
+      if (Platform.OS === 'web') {
+        alert(errorMessage);
+      } else {
+        Alert.alert('Error', errorMessage);
+      }
     } finally {
       setIsExporting(false);
     }
@@ -186,6 +272,14 @@ export default function ArsipScreen() {
     }
   }, [theme.colors]);
 
+  const getExportIcon = useCallback(() => {
+    if (Platform.OS === 'web') {
+      return "download";
+    } else {
+      return "share";
+    }
+  }, []);
+
   const renderItem = useCallback(({ item }: { item: Laporan }) => (
     <Card style={[styles.card, { backgroundColor: theme.colors.surface }]} onPress={() => handleItemPress(item)}>
       <Card.Content>
@@ -203,6 +297,17 @@ export default function ArsipScreen() {
       </Card.Content>
     </Card>
   ), [theme.colors, handleItemPress]);
+
+  const CustomDateInput = React.forwardRef(({ value, onClick, empty }: any, ref: any) => (
+    <TouchableOpacity
+      style={[styles.dateInput, { borderColor: theme.colors.outline }]}
+      onPress={onClick}
+      ref={ref}
+    >
+      <Ionicons name="calendar-outline" size={20} color={theme.colors.primary} />
+      <Text style={{ color: theme.colors.onSurface }}>{empty ? 'Pilih Tanggal' : value}</Text>
+    </TouchableOpacity>
+  ));
 
   if (loading && !laporan.length) {
     return (
@@ -259,21 +364,54 @@ export default function ArsipScreen() {
           elevation={1}
         />
         <View style={styles.filterContainer}>
-          <TouchableOpacity
-            style={[styles.dateInput, { borderColor: theme.colors.outline }]}
-            onPress={() => showDatePicker('start')}
-          >
-            <Ionicons name="calendar-outline" size={20} color={theme.colors.primary} />
-            <Text style={{ color: theme.colors.onSurface }}>{formatShortDate(startDate)}</Text>
-          </TouchableOpacity>
+          {Platform.OS === 'web' ? (
+            <View style={styles.datePickerWrapper}>
+              <DatePicker
+                selected={startDate}
+                onChange={(date) => handleConfirmDate(date as Date, 'start')}
+                customInput={<CustomDateInput value={formatShortDate(startDate)} empty={!startDate} />}
+                popperPlacement="bottom-start"
+                maxDate={new Date()}
+                portalId="date-picker-portal"
+                popperProps={{
+                  strategy: "fixed"
+                }}
+              />
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={[styles.dateInput, { borderColor: theme.colors.outline }]}
+              onPress={() => showDatePicker('start')}
+            >
+              <Ionicons name="calendar-outline" size={20} color={theme.colors.primary} />
+              <Text style={{ color: theme.colors.onSurface }}>{formatShortDate(startDate)}</Text>
+            </TouchableOpacity>
+          )}
           <Text style={{ color: theme.colors.onSurfaceVariant }}> - </Text>
-          <TouchableOpacity
-            style={[styles.dateInput, { borderColor: theme.colors.outline }]}
-            onPress={() => showDatePicker('end')}
-          >
-            <Ionicons name="calendar-outline" size={20} color={theme.colors.primary} />
-            <Text style={{ color: theme.colors.onSurface }}>{formatShortDate(endDate)}</Text>
-          </TouchableOpacity>
+          {Platform.OS === 'web' ? (
+            <View style={styles.datePickerWrapper}>
+              <DatePicker
+                selected={endDate}
+                onChange={(date) => handleConfirmDate(date as Date, 'end')}
+                customInput={<CustomDateInput value={formatShortDate(endDate)} empty={!endDate} />}
+                popperPlacement="bottom-end"
+                minDate={startDate || undefined}
+                maxDate={new Date()}
+                portalId="date-picker-portal"
+                popperProps={{
+                  strategy: "fixed"
+                }}
+              />
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={[styles.dateInput, { borderColor: theme.colors.outline }]}
+              onPress={() => showDatePicker('end')}
+            >
+              <Ionicons name="calendar-outline" size={20} color={theme.colors.primary} />
+              <Text style={{ color: theme.colors.onSurface }}>{formatShortDate(endDate)}</Text>
+            </TouchableOpacity>
+          )}
           <IconButton
             icon="refresh"
             size={20}
@@ -282,14 +420,16 @@ export default function ArsipScreen() {
             onPress={handleResetPress}
             disabled={loading}
           />
-          <IconButton
-            icon="download"
-            size={20}
-            iconColor={theme.colors.primary}
-            style={styles.resetButton}
-            onPress={handleExportPDF}
-            disabled={loading || isExporting}
-          />
+          {canShare && (
+            <IconButton
+              icon={getExportIcon()}
+              size={20}
+              iconColor={theme.colors.primary}
+              style={styles.resetButton}
+              onPress={handleExportPDF}
+              disabled={loading || isExporting || filteredLaporan.length === 0}
+            />
+          )}
         </View>
       </View>
 
@@ -309,13 +449,15 @@ export default function ArsipScreen() {
         refreshing={loading}
       />
 
-      <DateTimePickerModal
-        isVisible={isDatePickerVisible}
-        mode="date"
-        onConfirm={handleConfirmDate}
-        onCancel={hideDatePicker}
-        maximumDate={new Date()}
-      />
+      {Platform.OS !== 'web' && (
+        <DateTimePickerModal
+          isVisible={isDatePickerVisible}
+          mode="date"
+          onConfirm={(date) => handleConfirmDate(date, datePickerMode)}
+          onCancel={hideDatePicker}
+          maximumDate={new Date()}
+        />
+      )}
 
       {selectedLaporan && (
         <DetailLaporanDialog
@@ -331,6 +473,9 @@ export default function ArsipScreen() {
           formatDate={formatDate}
         />
       )}
+
+      {/* Portal untuk DatePicker di web */}
+      {Platform.OS === 'web' && <div id="date-picker-portal"></div>}
     </View>
   );
 }
@@ -352,7 +497,25 @@ const styles = StyleSheet.create({
   itemContent: { flexDirection: 'row', alignItems: 'center' },
   icon: { marginRight: 16 },
   textContainer: { flex: 1 },
-  filterContainer: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  dateInput: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10 },
+  filterContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  dateInput: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10
+  },
+  datePickerWrapper: {
+    flex: 1,
+    zIndex: 9999, 
+    position: 'relative',
+  },
   resetButton: { margin: 0, backgroundColor: 'rgba(0, 0, 0, 0.05)' }
 });
