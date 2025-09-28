@@ -3,7 +3,7 @@ import { useAppTheme } from '@/context/ThemeContext';
 import { ApiError, createUser, deleteUser, getUsers, updateUser, User } from '@/utils/api';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, forwardRef } from 'react';
 import { Alert, FlatList, RefreshControl, StyleSheet, View, ScrollView } from 'react-native';
 import {
     ActivityIndicator,
@@ -21,6 +21,7 @@ import {
     Text,
     TextInput,
     HelperText,
+    TouchableRipple,
 } from 'react-native-paper';
 
 const cleanUnitKerja = (unitKerja: string | undefined | null): string => {
@@ -28,6 +29,26 @@ const cleanUnitKerja = (unitKerja: string | undefined | null): string => {
     // Membersihkan format array postgresql seperti {"Nilai"} atau {Nilai}
     return unitKerja.replace(/^{"?(.*?)"?}$/, '$1');
 };
+
+const DropdownInput = forwardRef<View, any>(({ label, value, onOpen, error }, ref) => {
+    const { theme } = useAppTheme();
+    return (
+        <TouchableRipple onPress={onOpen} ref={ref}>
+            <View pointerEvents="none">
+                <TextInput
+                    mode="outlined"
+                    label={label}
+                    value={value}
+                    editable={false}
+                    error={error}
+                    right={<TextInput.Icon icon="chevron-down" />}
+                    style={{ backgroundColor: theme.colors.surface }}
+                />
+            </View>
+        </TouchableRipple>
+    );
+});
+
 
 const UserCard = ({ user, onEdit, onDelete }: { user: User; onEdit: (user: User) => void; onDelete: (user: User) => void }) => {
     const { theme } = useAppTheme();
@@ -70,6 +91,7 @@ export default function KelolaPenggunaScreen() {
     const [unitKerjaModalVisible, setUnitKerjaModalVisible] = useState(false);
     const [roleModalVisible, setRoleModalVisible] = useState(false);
     const [unitKerjaSearch, setUnitKerjaSearch] = useState('');
+    const [formErrors, setFormErrors] = useState<Record<string, string>>({});
     const [isPasswordVisible, setIsPasswordVisible] = useState(false);
 
     // Form state - Fixed with proper initialization
@@ -119,6 +141,7 @@ export default function KelolaPenggunaScreen() {
             password: ''
         });
         setUnitKerjaSearch('');
+        setFormErrors({});
     };
 
     const hideModal = () => {
@@ -169,32 +192,43 @@ export default function KelolaPenggunaScreen() {
         );
     };
 
-    const validateForm = () => {
+    const validateForm = (data: typeof formData) => {
+        const errors: Record<string, string> = {};
         const { nama, nip, email, jabatan, unit_kerja, role, password } = formData;
 
-        if (!nama.trim()) return 'Nama wajib diisi';
-        if (!nip.trim()) return 'NIP wajib diisi';
-        if (!email.trim()) return 'Email wajib diisi';
-        if (!jabatan.trim()) return 'Jabatan wajib diisi';
-        if (!unit_kerja.trim()) return 'Unit kerja wajib diisi';
-        if (!role) return 'Role wajib dipilih';
-        if (!isEditMode && !password.trim()) return 'Password wajib diisi';
+        if (!nama.trim()) errors.nama = 'Nama wajib diisi';
+        if (!nip.trim()) errors.nip = 'NIP wajib diisi';
+        else if (!/^\d+$/.test(nip)) errors.nip = 'NIP harus berupa angka';
+        else if (nip.length < 8) errors.nip = 'NIP minimal 8 digit';
 
-        // Validate email format
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) return 'Format email tidak valid';
+        if (!email.trim()) errors.email = 'Email wajib diisi';
+        else {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) errors.email = 'Format email tidak valid';
+        }
 
-        // Validate NIP (should be numeric and reasonable length)
-        if (!/^\d+$/.test(nip)) return 'NIP harus berupa angka';
-        if (nip.length < 8) return 'NIP minimal 8 digit';
+        if (!jabatan.trim()) errors.jabatan = 'Jabatan wajib diisi';
+        if (!unit_kerja.trim()) errors.unit_kerja = 'Unit kerja wajib dipilih';
+        if (!role) errors.role = 'Role wajib dipilih';
+        if (!isEditMode && !password.trim()) errors.password = 'Password wajib diisi';
+        else if (password.trim() && password.length < 6) errors.password = 'Password minimal 6 karakter';
 
-        return null;
+        setFormErrors(errors);
+        return Object.keys(errors).length === 0;
     };
 
     const handleSave = async () => {
-        const validationError = validateForm();
-        if (validationError) {
-            setSnackbar({ visible: true, message: validationError });
+        if (!validateForm(formData)) {
+            // Cari error pertama dan tampilkan di snackbar untuk ringkasan
+            const firstErrorKey = Object.keys(formErrors)[0];
+            const firstErrorMessage = formErrors[firstErrorKey];
+            
+            let snackbarMessage = 'Harap perbaiki semua error pada form.';
+            if (firstErrorMessage) {
+                snackbarMessage = `Error: ${firstErrorMessage}`;
+            }
+
+            setSnackbar({ visible: true, message: snackbarMessage });
             return;
         }
 
@@ -214,14 +248,20 @@ export default function KelolaPenggunaScreen() {
         setSaving(true);
         try {
             if (isEditMode && selectedUser) {
-                // The 'nip' property is not needed in the body for an update,
-                // but we should not remove it from the object being sent if the API expects it.
-                // Let's create a specific object for the update.
-                const { nip, ...updatePayload } = userData;
+                // Destructure to separate nip, and create a payload without it for the body.
+                // The nip is sent in the URL.
+                const { nip, ...updatePayload } = userData; 
                 await updateUser(selectedUser.nip, updatePayload);
                 setSnackbar({ visible: true, message: 'Pengguna berhasil diperbarui' });
             } else {
-                await createUser(userData as any);
+                // Ensure the full userData object, which includes the password, is sent.
+                // The 'as any' cast can hide type errors, so let's be explicit.
+                // The createUser function expects all fields including password for a new user.
+                // We can assert that userData has a password because of the validation above.
+                if (!userData.password) {
+                    throw new Error("Password is required for new user.");
+                }
+                await createUser(userData as User & { password: string });
                 setSnackbar({ visible: true, message: 'Pengguna berhasil ditambahkan' });
             }
             hideModal();
@@ -247,10 +287,12 @@ export default function KelolaPenggunaScreen() {
     };
 
     const updateFormData = (field: string, value: string) => {
-        setFormData(prev => ({
-            ...prev,
+        const newData = {
+            ...formData,
             [field]: value
-        }));
+        };
+        setFormData(newData);
+        validateForm(newData); // Validasi setiap kali ada perubahan
     };
 
     // Get filtered role options (exclude kabbag_umum and subbag_umum)
@@ -334,14 +376,17 @@ export default function KelolaPenggunaScreen() {
                         <ScrollView showsVerticalScrollIndicator={false}>
                             <Text style={styles.modalTitle}>{isEditMode ? 'Edit Pengguna' : 'Tambah Pengguna'}</Text>
 
-                            <TextInput
-                                mode="outlined"
-                                label="Nama Lengkap"
-                                value={formData.nama}
-                                onChangeText={(value) => updateFormData('nama', value)}
-                                style={styles.input}
-                                error={!formData.nama.trim() && formData.nama !== ''}
-                            />
+                            <View>
+                                <TextInput
+                                    mode="outlined"
+                                    label="Nama Lengkap"
+                                    value={formData.nama}
+                                    onChangeText={(value) => updateFormData('nama', value)}
+                                    style={styles.input}
+                                    error={!!formErrors.nama}
+                                />
+                                <HelperText type="error" visible={!!formErrors.nama}>{formErrors.nama}</HelperText>
+                            </View>
 
                             <View>
                                 <TextInput
@@ -352,65 +397,73 @@ export default function KelolaPenggunaScreen() {
                                     keyboardType="numeric"
                                     style={styles.input}
                                     disabled={isEditMode}
-                                    error={!formData.nip.trim() && formData.nip !== ''}
+                                    error={!!formErrors.nip}
                                 />
+                                <HelperText type="error" visible={!!formErrors.nip}>{formErrors.nip}</HelperText>
                             </View>
 
-                            <TextInput
-                                mode="outlined"
-                                label="Jabatan"
-                                value={formData.jabatan}
-                                onChangeText={(value) => updateFormData('jabatan', value)}
-                                style={styles.input}
-                                error={!formData.jabatan.trim() && formData.jabatan !== ''}
-                            />
+                            <View>
+                                <TextInput
+                                    mode="outlined"
+                                    label="Jabatan"
+                                    value={formData.jabatan}
+                                    onChangeText={(value) => updateFormData('jabatan', value)}
+                                    style={styles.input}
+                                    error={!!formErrors.jabatan}
+                                />
+                                <HelperText type="error" visible={!!formErrors.jabatan}>{formErrors.jabatan}</HelperText>
+                            </View>
 
                             {/* Unit Kerja Picker */}
-                            <Button
-                                mode="outlined"
-                                onPress={() => {
-                                    setUnitKerjaSearch(formData.unit_kerja);
-                                    setUnitKerjaModalVisible(true);
-                                }}
-                                style={styles.input}
-                                contentStyle={styles.menuAnchor}
-                                icon="chevron-down"
-                            >
-                                {formData.unit_kerja || 'Pilih Unit Kerja'}
-                            </Button>
+                            <View style={styles.inputWrapper}>
+                                <DropdownInput
+                                    label="Unit Kerja"
+                                    value={formData.unit_kerja}
+                                    onOpen={() => {
+                                        setUnitKerjaSearch(formData.unit_kerja);
+                                        setUnitKerjaModalVisible(true);
+                                    }}
+                                    error={!!formErrors.unit_kerja}
+                                />
+                                <HelperText type="error" visible={!!formErrors.unit_kerja}>{formErrors.unit_kerja}</HelperText>
+                            </View>
 
-                            <TextInput
-                                mode="outlined"
-                                label="Email"
-                                value={formData.email}
-                                onChangeText={(value) => updateFormData('email', value)}
-                                keyboardType="email-address"
-                                autoCapitalize="none"
-                                style={styles.input}
-                                error={!formData.email.trim() && formData.email !== ''}
-                            />
+                            <View style={styles.inputWrapper}>
+                                <TextInput
+                                    mode="outlined"
+                                    label="Email"
+                                    value={formData.email}
+                                    onChangeText={(value) => updateFormData('email', value)}
+                                    keyboardType="email-address"
+                                    autoCapitalize="none"
+                                    error={!!formErrors.email}
+                                />
+                                <HelperText type="error" visible={!!formErrors.email}>{formErrors.email}</HelperText>
+                            </View>
 
                             {/* Role Picker */}
-                            <Button
-                                mode="outlined"
-                                onPress={() => setRoleModalVisible(true)}
-                                style={styles.input}
-                                contentStyle={styles.menuAnchor}
-                                icon="chevron-down"
-                            >
-                                {ROLE_OPTIONS[formData.role] || 'Pilih Role'}
-                            </Button>
-
-                            <TextInput
-                                mode="outlined"
-                                label={isEditMode ? "Password Baru (Opsional)" : "Password"}
-                                secureTextEntry={!isPasswordVisible}
-                                value={formData.password}
-                                onChangeText={(value) => updateFormData('password', value)}
-                                style={styles.input}
-                                error={!isEditMode && !formData.password.trim() && formData.password !== ''}
-                                right={<TextInput.Icon icon={isPasswordVisible ? "eye-off" : "eye"} onPress={() => setIsPasswordVisible(!isPasswordVisible)} />}
-                            />
+                            <View style={styles.inputWrapper}>
+                                <DropdownInput
+                                    label="Role"
+                                    value={ROLE_OPTIONS[formData.role] || ''}
+                                    onOpen={() => setRoleModalVisible(true)}
+                                    error={!!formErrors.role}
+                                />
+                                <HelperText type="error" visible={!!formErrors.role}>{formErrors.role}</HelperText>
+                            </View>
+                            <View>
+                                <TextInput
+                                    mode="outlined"
+                                    label={isEditMode ? "Password Baru (Opsional)" : "Password"}
+                                    secureTextEntry={!isPasswordVisible}
+                                    value={formData.password}
+                                    onChangeText={(value) => updateFormData('password', value)}
+                                    style={styles.input}
+                                    error={!!formErrors.password}
+                                    right={<TextInput.Icon icon={isPasswordVisible ? "eye-off" : "eye"} onPress={() => setIsPasswordVisible(!isPasswordVisible)} />}
+                                />
+                                <HelperText type="error" visible={!!formErrors.password}>{formErrors.password}</HelperText>
+                            </View>
 
                             <Button
                                 mode="contained"
@@ -441,7 +494,6 @@ export default function KelolaPenggunaScreen() {
                             label="Cari atau buat baru"
                             value={unitKerjaSearch}
                             onChangeText={setUnitKerjaSearch}
-                            style={styles.input}
                         />
 
                         <FlatList
@@ -648,8 +700,11 @@ const createStyles = (theme: any) => StyleSheet.create({
         marginBottom: 20,
         textAlign: 'center',
     },
+    inputWrapper: {
+        marginBottom: 4,
+    },
     input: {
-        marginBottom: 12,
+        marginBottom: 0, // HelperText will provide the spacing
         backgroundColor: theme.colors.surface,
     },
     menuAnchor: {

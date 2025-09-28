@@ -3,8 +3,8 @@ import { useAppTheme } from '@/context/ThemeContext';
 import { ApiError, createUser, deleteUser, getCurrentUser, getUsers, updateUser, User } from '@/utils/api';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, FlatList, RefreshControl, StyleSheet, View, ScrollView } from 'react-native';
+import React, { useCallback, useEffect, useState, forwardRef } from 'react';
+import { Alert, FlatList, RefreshControl, StyleSheet, View, ScrollView, TouchableOpacity } from 'react-native';
 import {
     ActivityIndicator,
     Button,
@@ -18,12 +18,34 @@ import {
     Snackbar,
     Text,
     TextInput,
+    HelperText,
+    TouchableRipple,
 } from 'react-native-paper';
 
 const cleanUnitKerja = (unitKerja: string | undefined | null): string => {
     if (!unitKerja) return '';
     return unitKerja.replace(/^{"?(.*?)"?}$/, '$1');
 };
+
+const DropdownInput = forwardRef<View, any>(({ label, value, onOpen, error }, ref) => {
+    const { theme } = useAppTheme();
+    return (
+        <TouchableRipple onPress={onOpen} ref={ref}>
+            <View pointerEvents="none">
+                <TextInput
+                    mode="outlined"
+                    label={label}
+                    value={value}
+                    editable={false}
+                    error={error}
+                    right={<TextInput.Icon icon="chevron-down" />}
+                    style={{ backgroundColor: theme.colors.surface }}
+                />
+            </View>
+        </TouchableRipple>
+    );
+});
+
 
 const UserCard = ({ user, onEdit, onDelete }: { user: User; onEdit: (user: User) => void; onDelete: (user: User) => void }) => {
     const { theme } = useAppTheme();
@@ -63,6 +85,7 @@ export default function KelolaPenggunaScreen() {
     const [snackbar, setSnackbar] = useState({ visible: false, message: '' });
     const [menuVisible, setMenuVisible] = useState(false);
     const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+    const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
     const [formData, setFormData] = useState({
         nama: '',
@@ -75,10 +98,12 @@ export default function KelolaPenggunaScreen() {
     });
 
     const updateFormData = (field: string, value: string) => {
-        setFormData(prev => ({
-            ...prev,
+        const newData = {
+            ...formData,
             [field]: value
-        }));
+        };
+        setFormData(newData);
+        validateForm(newData); // Validasi setiap kali ada perubahan
     };
 
     useEffect(() => {
@@ -143,6 +168,7 @@ export default function KelolaPenggunaScreen() {
             role: '',
             password: ''
         }));
+        setFormErrors({});
     };
 
     const hideModal = () => {
@@ -193,26 +219,43 @@ export default function KelolaPenggunaScreen() {
         );
     };
 
-    const validateForm = () => {
-        const { nama, nip, email, jabatan, unit_kerja, role, password } = formData;
-        if (!nama.trim()) return 'Nama wajib diisi';
-        if (!nip.trim()) return 'NIP wajib diisi';
-        if (!email.trim()) return 'Email wajib diisi';
-        if (!jabatan.trim()) return 'Jabatan wajib diisi';
-        if (!unit_kerja.trim()) return 'Unit kerja wajib diisi';
-        if (!role) return 'Role wajib dipilih';
-        if (!isEditMode && !password.trim()) return 'Password wajib diisi';
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) return 'Format email tidak valid';
-        if (!/^\d+$/.test(nip)) return 'NIP harus berupa angka';
-        if (nip.length < 8) return 'NIP minimal 8 digit';
-        return null;
+    const validateForm = (data: typeof formData) => {
+        const errors: Record<string, string> = {};
+        const { nama, nip, email, jabatan, unit_kerja, role, password } = data;
+
+        if (!nama.trim()) errors.nama = 'Nama wajib diisi';
+        if (!nip.trim()) errors.nip = 'NIP wajib diisi';
+        else if (!/^\d+$/.test(nip)) errors.nip = 'NIP harus berupa angka';
+        else if (nip.length < 8) errors.nip = 'NIP minimal 8 digit';
+
+        if (!email.trim()) errors.email = 'Email wajib diisi';
+        else {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) errors.email = 'Format email tidak valid';
+        }
+
+        if (!jabatan.trim()) errors.jabatan = 'Jabatan wajib diisi';
+        if (!unit_kerja.trim()) errors.unit_kerja = 'Unit kerja wajib diisi';
+        if (!role) errors.role = 'Role wajib dipilih';
+
+        if (!isEditMode && !password.trim()) errors.password = 'Password wajib diisi';
+        else if (password.trim() && password.length < 6) errors.password = 'Password minimal 6 karakter';
+
+        setFormErrors(errors);
+        return Object.keys(errors).length === 0;
     };
 
     const handleSave = async () => {
-        const validationError = validateForm();
-        if (validationError) {
-            setSnackbar({ visible: true, message: validationError });
+        if (!validateForm(formData)) {
+            const firstErrorKey = Object.keys(formErrors)[0];
+            const firstErrorMessage = formErrors[firstErrorKey];
+            
+            let snackbarMessage = 'Harap perbaiki semua error pada form.';
+            if (firstErrorMessage) {
+                snackbarMessage = `Error: ${firstErrorMessage}`;
+            }
+
+            setSnackbar({ visible: true, message: snackbarMessage });
             return;
         }
 
@@ -233,7 +276,10 @@ export default function KelolaPenggunaScreen() {
                 await updateUser(selectedUser.nip, updateData);
                 setSnackbar({ visible: true, message: 'Pengguna berhasil diperbarui' });
             } else {
-                await createUser(userData as any);
+                if (!userData.password) {
+                    throw new Error("Password is required for new user.");
+                }
+                await createUser(userData as User & { password: string });
                 setSnackbar({ visible: true, message: 'Pengguna berhasil ditambahkan' });
             }
             hideModal();
@@ -326,39 +372,48 @@ export default function KelolaPenggunaScreen() {
                     <Modal visible={modalVisible} onDismiss={hideModal} contentContainerStyle={[styles.modalContainer, { backgroundColor: theme.colors.surface }]}>
                         <ScrollView showsVerticalScrollIndicator={false}>
                             <Text style={styles.modalTitle}>{isEditMode ? 'Edit Pengguna' : 'Tambah Pengguna'}</Text>
-                            
-                            <TextInput mode="outlined" label="Nama Lengkap" value={formData.nama} onChangeText={(v) => updateFormData('nama', v)} style={styles.input} />
-                            <TextInput mode="outlined" label="NIP" value={formData.nip} onChangeText={(v) => updateFormData('nip', v)} keyboardType="numeric" style={styles.input} disabled={isEditMode} />
-                            <TextInput mode="outlined" label="Jabatan" value={formData.jabatan} onChangeText={(v) => updateFormData('jabatan', v)} style={styles.input} />
-                            <TextInput mode="outlined" label="Unit Kerja" value={formData.unit_kerja} style={styles.input} disabled />
-                            <TextInput mode="outlined" label="Email" value={formData.email} onChangeText={(v) => updateFormData('email', v)} keyboardType="email-address" autoCapitalize="none" style={styles.input} />
-
-                            <Menu
-                                visible={menuVisible}
-                                onDismiss={() => setMenuVisible(false)}
-                                anchor={
-                                    <Button
-                                        mode="outlined"
-                                        onPress={() => setMenuVisible(true)}
-                                        style={styles.input}
-                                        contentStyle={styles.menuAnchor}
-                                        icon="chevron-down"
-                                    >
-                                        {ROLE_OPTIONS[formData.role] || 'Pilih Role'}
-                                    </Button>
-                                }>
-                                <Menu.Item onPress={() => { updateFormData('role', 'pelapor'); setMenuVisible(false); }} title="Pelapor" />
-                            </Menu>
-
-                            <TextInput
-                                mode="outlined"
-                                label={isEditMode ? "Password Baru (Opsional)" : "Password"}
-                                secureTextEntry={!isPasswordVisible}
-                                value={formData.password}
-                                onChangeText={(v) => updateFormData('password', v)}
-                                style={styles.input}
-                                right={<TextInput.Icon icon={isPasswordVisible ? "eye-off" : "eye"} onPress={() => setIsPasswordVisible(!isPasswordVisible)} />}
-                            />
+                            <View>
+                                <TextInput mode="outlined" label="Nama Lengkap" value={formData.nama} onChangeText={(v) => updateFormData('nama', v)} style={styles.input} error={!!formErrors.nama} />
+                                <HelperText type="error" visible={!!formErrors.nama}>{formErrors.nama}</HelperText>
+                            </View>
+                            <View>
+                                <TextInput mode="outlined" label="NIP" value={formData.nip} onChangeText={(v) => updateFormData('nip', v)} keyboardType="numeric" style={styles.input} disabled={isEditMode} error={!!formErrors.nip} />
+                                <HelperText type="error" visible={!!formErrors.nip}>{formErrors.nip}</HelperText>
+                            </View>
+                            <View>
+                                <TextInput mode="outlined" label="Jabatan" value={formData.jabatan} onChangeText={(v) => updateFormData('jabatan', v)} style={styles.input} error={!!formErrors.jabatan} />
+                                <HelperText type="error" visible={!!formErrors.jabatan}>{formErrors.jabatan}</HelperText>
+                            </View>
+                            <View>
+                                <TextInput mode="outlined" label="Unit Kerja" value={formData.unit_kerja} style={styles.input} disabled error={!!formErrors.unit_kerja} />
+                                <HelperText type="error" visible={!!formErrors.unit_kerja}>{formErrors.unit_kerja}</HelperText>
+                            </View>
+                            <View>
+                                <TextInput mode="outlined" label="Email" value={formData.email} onChangeText={(v) => updateFormData('email', v)} keyboardType="email-address" autoCapitalize="none" style={styles.input} error={!!formErrors.email} />
+                                <HelperText type="error" visible={!!formErrors.email}>{formErrors.email}</HelperText>
+                            </View>
+                            <View>
+                                <DropdownInput
+                                    label="Role"
+                                    value={ROLE_OPTIONS[formData.role] || ''}
+                                    onOpen={() => setMenuVisible(true)}
+                                    error={!!formErrors.role}
+                                />
+                                <HelperText type="error" visible={!!formErrors.role}>{formErrors.role}</HelperText>
+                            </View>
+                            <View>
+                                <TextInput
+                                    mode="outlined"
+                                    label={isEditMode ? "Password Baru (Opsional)" : "Password"}
+                                    secureTextEntry={!isPasswordVisible}
+                                    value={formData.password}
+                                    onChangeText={(v) => updateFormData('password', v)}
+                                    style={styles.input}
+                                    right={<TextInput.Icon icon={isPasswordVisible ? "eye-off" : "eye"} onPress={() => setIsPasswordVisible(!isPasswordVisible)} />}
+                                    error={!!formErrors.password}
+                                />
+                                <HelperText type="error" visible={!!formErrors.password}>{formErrors.password}</HelperText>
+                            </View>
                             <Button mode="contained" onPress={handleSave} style={styles.saveButton} loading={saving} disabled={saving}>
                                 Simpan
                             </Button>
@@ -367,6 +422,20 @@ export default function KelolaPenggunaScreen() {
                             </Button>
                         </ScrollView>
                     </Modal>
+
+                    {/* Menu for Role Selection */}
+                    <Menu
+                        visible={menuVisible}
+                        onDismiss={() => setMenuVisible(false)}
+                        anchor={
+                            // Invisible anchor, position can be tricky.
+                            // A better approach would be a full modal like in kabbag-umum,
+                            // but for consistency with the current logic, we keep the Menu.
+                            <View style={{ position: 'absolute', top: 0, left: 0 }} />
+                        }
+                    >
+                        <Menu.Item onPress={() => { updateFormData('role', 'pelapor'); setMenuVisible(false); }} title="Pelapor" />
+                    </Menu>
                 </Portal>
                 <Snackbar
                     visible={snackbar.visible}
@@ -484,7 +553,7 @@ const createStyles = (theme: any) => StyleSheet.create({
         textAlign: 'center',
     },
     input: {
-        marginBottom: 12,
+        marginBottom: 0,
         backgroundColor: theme.colors.surface,
         color: theme.colors.onSurface,
         borderRadius: 12,
