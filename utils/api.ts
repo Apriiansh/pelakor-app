@@ -448,6 +448,24 @@ export const apiLogin = async (data: { identifier: string; password: string }): 
     }
 };
 
+/**
+ * Logout user by clearing session data from storage
+ */
+export const apiLogout = async (): Promise<void> => {
+    try {
+        const keys = ['userToken', 'userData', 'userRole'];
+        if (Platform.OS === 'web') {
+            keys.forEach(key => localStorage.removeItem(key));
+        } else {
+            await AsyncStorage.multiRemove(keys);
+        }
+    } catch (error) {
+        console.error('Failed to logout:', error);
+        // Optional: re-throw or handle error
+        throw new Error('Logout failed');
+    }
+};
+
 // --- USER ENDPOINTS ---
 
 /**

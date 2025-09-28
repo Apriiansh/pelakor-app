@@ -1,4 +1,3 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, View, ActivityIndicator } from 'react-native';
@@ -6,16 +5,54 @@ import { Avatar, Button, Card, useTheme, List, IconButton, Portal, Modal, Divide
 import { useAppTheme, ThemePreference } from '@/context/ThemeContext';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { ThemeSettings } from '@/components/ThemeSettings';
+import { apiLogout } from '@/utils/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const API_URL = `${process.env.EXPO_PUBLIC_API_URL}`;
 
-export default function ProfilKabbagUmum() {
+export default function ProfilKabbag() {
     const [user, setUser] = useState<{ nama: string; nip: string; email: string; jabatan: String; role: string } | null>(null);
     const [loading, setLoading] = useState(true);
     const [themeModalVisible, setThemeModalVisible] = useState(false);
     const router = useRouter();
     const theme = useTheme();
     const { themePreference, setThemePreference } = useAppTheme();
+
+    const handleLogout = (showAlert = true) => {
+        const performLogout = async () => {
+            try {
+                await apiLogout();
+                router.replace('/(auth)/login');
+            } catch (error) {
+                console.error('Logout failed:', error);
+                if (showAlert) {
+                    Alert.alert('Error', 'Gagal untuk keluar. Silakan coba lagi.');
+                } else {
+                    router.replace('/(auth)/login');
+                }
+            }
+        };
+
+        if (showAlert) {
+            Alert.alert(
+                'Konfirmasi Keluar',
+                'Apakah Anda yakin ingin keluar dari aplikasi?',
+                [
+                    {
+                        text: 'Batal',
+                        style: 'cancel',
+                    },
+                    {
+                        text: 'Keluar',
+                        onPress: performLogout,
+                        style: 'destructive',
+                    },
+                ]
+            );
+        } else {
+            performLogout();
+        }
+    };
 
     useEffect(() => {
         const fetchProfile = async () => {
@@ -57,17 +94,6 @@ export default function ProfilKabbagUmum() {
 
         fetchProfile();
     }, []);
-
-    const handleLogout = async (showAlert = true) => {
-        await AsyncStorage.multiRemove(['userToken', 'userData']);
-        if (showAlert) {
-            Alert.alert('Logout', 'Anda telah berhasil keluar.', [
-                { text: 'OK', onPress: () => router.replace('/(auth)/login') }
-            ]);
-        } else {
-            router.replace('/(auth)/login');
-        }
-    };
 
     const getThemeIcon = () => {
         switch (themePreference) {

@@ -124,7 +124,7 @@ const generateHTMLContent = (options: PDFExportOptions, logoBase64: string = '')
         }
         
         .header {
-          text-align: center;
+          text-align: left;
           margin-bottom: 25px;
           padding: 15px 0;
           border-bottom: 3px solid #2196F3;

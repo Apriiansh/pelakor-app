@@ -1,13 +1,64 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, View, ActivityIndicator } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text, View, ActivityIndicator, Platform } from 'react-native';
 import { Avatar, Button, Card, useTheme, List, IconButton, Portal, Modal, Divider } from 'react-native-paper';
 import { useAppTheme, ThemePreference } from '@/context/ThemeContext';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { ThemeSettings } from '@/components/ThemeSettings';
+import { apiLogout } from '@/utils/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const API_URL = `${process.env.EXPO_PUBLIC_API_URL}`;
+
+// Web Modal Component
+const WebModal = ({ visible, onClose, children, theme }: {
+    visible: boolean;
+    onClose: () => void;
+    children: React.ReactNode;
+    theme: any;
+}) => {
+    if (!visible || Platform.OS !== 'web') return null;
+
+    return (
+        <div
+            style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                zIndex: 9999,
+                backdropFilter: 'blur(4px)',
+            }}
+            onClick={(e) => {
+                // Close modal when clicking backdrop
+                if (e.target === e.currentTarget) {
+                    onClose();
+                }
+            }}
+        >
+            <div
+                style={{
+                    backgroundColor: theme.colors.surface,
+                    borderRadius: 16,
+                    margin: 20,
+                    maxWidth: 400,
+                    width: '90%',
+                    maxHeight: '70vh',
+                    overflow: 'hidden',
+                    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.15)',
+                }}
+                onClick={(e) => e.stopPropagation()}
+            >
+                {children}
+            </div>
+        </div>
+    );
+};
 
 export default function ProfilKabbagUmum() {
     const [user, setUser] = useState<{ nama: string; nip: string; email: string; jabatan: String; role: string } | null>(null);
@@ -16,6 +67,59 @@ export default function ProfilKabbagUmum() {
     const router = useRouter();
     const theme = useTheme();
     const { themePreference, setThemePreference } = useAppTheme();
+
+    const showAlertDialog = (title: string, message: string, buttons?: any[]) => {
+        if (Platform.OS === 'web') {
+            if (buttons && buttons.length > 1) {
+                // For confirmation dialogs
+                const confirmed = window.confirm(`${title}\n\n${message}`);
+                if (confirmed && buttons[1].onPress) {
+                    buttons[1].onPress();
+                }
+            } else {
+                // For simple alerts
+                window.alert(`${title}\n\n${message}`);
+            }
+        } else {
+            Alert.alert(title, message, buttons);
+        }
+    };
+
+    const handleLogout = (showAlert = true) => {
+        const performLogout = async () => {
+            try {
+                await apiLogout();
+                router.replace('/(auth)/login');
+            } catch (error) {
+                console.error('Logout failed:', error);
+                if (showAlert) {
+                    showAlertDialog('Error', 'Gagal untuk keluar. Silakan coba lagi.');
+                } else {
+                    router.replace('/(auth)/login');
+                }
+            }
+        };
+
+        if (showAlert) {
+            showAlertDialog(
+                'Konfirmasi Keluar',
+                'Apakah Anda yakin ingin keluar dari aplikasi?',
+                [
+                    {
+                        text: 'Batal',
+                        style: 'cancel',
+                    },
+                    {
+                        text: 'Keluar',
+                        onPress: performLogout,
+                        style: 'destructive',
+                    },
+                ]
+            );
+        } else {
+            performLogout();
+        }
+    };
 
     useEffect(() => {
         const fetchProfile = async () => {
@@ -45,7 +149,7 @@ export default function ProfilKabbagUmum() {
                 await AsyncStorage.setItem('userData', JSON.stringify(data));
 
             } catch (error: any) {
-                Alert.alert('Error', error.message || 'Terjadi kesalahan jaringan.');
+                showAlertDialog('Error', error.message || 'Terjadi kesalahan jaringan.');
                 // Jika ada error otentikasi, arahkan ke login
                 if (error.message.includes('Sesi')) {
                     handleLogout(false);
@@ -57,17 +161,6 @@ export default function ProfilKabbagUmum() {
 
         fetchProfile();
     }, []);
-
-    const handleLogout = async (showAlert = true) => {
-        await AsyncStorage.multiRemove(['userToken', 'userData']);
-        if (showAlert) {
-            Alert.alert('Logout', 'Anda telah berhasil keluar.', [
-                { text: 'OK', onPress: () => router.replace('/(auth)/login') }
-            ]);
-        } else {
-            router.replace('/(auth)/login');
-        }
-    };
 
     const getThemeIcon = () => {
         switch (themePreference) {
@@ -102,10 +195,9 @@ export default function ProfilKabbagUmum() {
             { value: 'dark', label: 'Tema Gelap' },
         ];
         const selectedOption = themeOptionsForAlert.find(option => option.value === newTheme);
-        Alert.alert(
+        showAlertDialog(
             'Tema Berhasil Diubah',
-            `Tema aplikasi telah diubah ke "${selectedOption?.label}"`,
-            [{ text: 'OK' }]
+            `Tema aplikasi telah diubah ke "${selectedOption?.label}"`
         );
     };
 
@@ -119,6 +211,28 @@ export default function ProfilKabbagUmum() {
             </View>
         );
     }
+
+    const ModalContent = () => (
+        <>
+            <View style={styles.modalHeader}>
+                <Text style={[styles.modalTitle, { color: theme.colors.onSurface }]}>
+                    Pilih Tema Aplikasi
+                </Text>
+                <IconButton
+                    icon="close"
+                    size={24}
+                    iconColor={theme.colors.onSurfaceVariant}
+                    onPress={() => setThemeModalVisible(false)}
+                    style={{ margin: 0 }}
+                />
+            </View>
+
+            <Divider style={{ backgroundColor: theme.colors.outlineVariant }} />
+
+            {/* Use ThemeSettings component here */}
+            <ThemeSettings onThemeSelected={handleThemeSelectedFromSettings} />
+        </>
+    );
 
     return (
         <>
@@ -188,10 +302,13 @@ export default function ProfilKabbagUmum() {
                                     size={20}
                                 />
                             )}
-                            onPress={() => setThemeModalVisible(true)}
+                            onPress={() => {
+                                console.log('Theme button pressed');
+                                setThemeModalVisible(true);
+                            }}
                             titleStyle={[styles.listTitle, { color: theme.colors.onSurface }]}
                             descriptionStyle={[styles.listDescription, { color: theme.colors.onSurfaceVariant }]}
-                            style={styles.listItem}
+                            style={[styles.listItem, Platform.OS === 'web' && { cursor: 'pointer' }]}
                         />
                     </Card.Content>
                 </Card>
@@ -199,8 +316,11 @@ export default function ProfilKabbagUmum() {
                 {/* Logout Button */}
                 <Button
                     mode="contained"
-                    style={styles.logoutBtn}
-                    onPress={() => handleLogout()}
+                    style={[styles.logoutBtn, Platform.OS === 'web' && { cursor: 'pointer' }]}
+                    onPress={() => {
+                        console.log('Logout button pressed');
+                        handleLogout();
+                    }}
                     buttonColor={theme.colors.error}
                     textColor={theme.colors.onError}
                     icon="logout"
@@ -210,34 +330,28 @@ export default function ProfilKabbagUmum() {
             </ScrollView>
 
             {/* Theme Selection Modal */}
-            <Portal>
-                <Modal
+            {Platform.OS === 'web' ? (
+                <WebModal
                     visible={themeModalVisible}
-                    onDismiss={() => setThemeModalVisible(false)}
-                    contentContainerStyle={[
-                        styles.modalContainer,
-                        { backgroundColor: theme.colors.surface }
-                    ]}
+                    onClose={() => setThemeModalVisible(false)}
+                    theme={theme}
                 >
-                    <View style={styles.modalHeader}>
-                        <Text style={[styles.modalTitle, { color: theme.colors.onSurface }]}>
-                            Pilih Tema Aplikasi
-                        </Text>
-                        <IconButton
-                            icon="close"
-                            size={24}
-                            iconColor={theme.colors.onSurfaceVariant}
-                            onPress={() => setThemeModalVisible(false)}
-                        />
-                    </View>
-
-                    <Divider style={{ backgroundColor: theme.colors.outlineVariant }} />
-
-                    {/* Use ThemeSettings component here */}
-                    <ThemeSettings onThemeSelected={handleThemeSelectedFromSettings} />
-
-                </Modal>
-            </Portal>
+                    <ModalContent />
+                </WebModal>
+            ) : (
+                <Portal>
+                    <Modal
+                        visible={themeModalVisible}
+                        onDismiss={() => setThemeModalVisible(false)}
+                        contentContainerStyle={[
+                            styles.modalContainer,
+                            { backgroundColor: theme.colors.surface, pointerEvents: 'auto' }
+                        ]}
+                    >
+                        <ModalContent />
+                    </Modal>
+                </Portal>
+            )}
         </>
     );
 }
@@ -354,6 +468,7 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         paddingVertical: 6,
         elevation: 2,
+        zIndex: 999,
     },
     modalContainer: {
         margin: 20,
