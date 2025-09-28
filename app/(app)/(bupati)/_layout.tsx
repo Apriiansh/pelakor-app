@@ -69,6 +69,19 @@ export default function KabbagUmumLayout() {
             }}
         >
             <Tabs.Screen
+                name="laporan"
+                options={{
+                    title: 'Laporan',
+                    tabBarIcon: ({ color, focused }) => (
+                        <Ionicons
+                            name={focused ? "document" : "document-outline"}
+                            size={26}
+                            color={color}
+                        />
+                    ),
+                }}
+            />
+            <Tabs.Screen
                 name="home"
                 options={{
                     title: 'Dashboard',
@@ -81,6 +94,7 @@ export default function KabbagUmumLayout() {
                       ),
                 }}
             />
+            
             <Tabs.Screen
                 name="profil"
                 options={{
@@ -91,20 +105,7 @@ export default function KabbagUmumLayout() {
                             size={26}
                             color={color}
                         />
-                      ),
-                }}
-            />
-            <Tabs.Screen
-                name="laporan"
-                options={{
-                    title: 'Laporan',
-                    tabBarIcon: ({ color, focused }) => (
-                        <Ionicons
-                            name={focused ? "document" : "document-outline"}
-                            size={26}
-                            color={color}
-                        />
-                      ),
+                    ),
                 }}
             />
         </Tabs>

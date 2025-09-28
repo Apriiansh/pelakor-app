@@ -64,19 +64,7 @@ export default function KabbagUmumLayout() {
         tabBarItemStyle: styles.tabBarItem,
       }}
     >
-      <Tabs.Screen
-        name="home"
-        options={{
-          title: "Home",
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons
-              name={focused ? "home" : "home-outline"}
-              size={26}
-              color={color}
-            />
-          ),
-        }}
-      />
+      
       <Tabs.Screen
         name="disposisi_laporan"
         options={{
@@ -84,19 +72,6 @@ export default function KabbagUmumLayout() {
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
               name={focused ? "send" : "send-outline"}
-              size={26}
-              color={color}
-            />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="kelola_pengguna"
-        options={{
-          title: "Pengguna",
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons
-              name={focused ? "people" : "people-outline"}
               size={26}
               color={color}
             />
@@ -116,6 +91,34 @@ export default function KabbagUmumLayout() {
           ),
         }}
       />
+      
+      <Tabs.Screen
+        name="home"
+        options={{
+          title: "Home",
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons
+              name={focused ? "home" : "home-outline"}
+              size={26}
+              color={color}
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="kelola_pengguna"
+        options={{
+          title: "Pengguna",
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons
+              name={focused ? "people" : "people-outline"}
+              size={26}
+              color={color}
+            />
+          ),
+        }}
+      />
+      
       <Tabs.Screen
         name="profil"
         options={{

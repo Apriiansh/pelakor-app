@@ -78,19 +78,6 @@ export default function KabbagUmumLayout() {
         }}
       />
       <Tabs.Screen
-        name="disposisi_laporan"
-        options={{
-          title: "Disposisi",
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons
-              name={focused ? "send" : "send-outline"}
-              size={26}
-              color={color}
-            />
-          ),
-        }}
-      />
-      <Tabs.Screen
         name="kelola_pengguna"
         options={{
           title: "Pengguna",
@@ -104,9 +91,9 @@ export default function KabbagUmumLayout() {
         }}
       />
       <Tabs.Screen
-        name="arsip"
+        name="laporan"
         options={{
-          title: "Arsip",
+          title: "Laporan",
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
               name={focused ? "archive" : "archive-outline"}

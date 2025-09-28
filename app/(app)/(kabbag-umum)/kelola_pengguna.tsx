@@ -214,8 +214,11 @@ export default function KelolaPenggunaScreen() {
         setSaving(true);
         try {
             if (isEditMode && selectedUser) {
-                const { nip, ...updateData } = userData;
-                await updateUser(selectedUser.nip, updateData);
+                // The 'nip' property is not needed in the body for an update,
+                // but we should not remove it from the object being sent if the API expects it.
+                // Let's create a specific object for the update.
+                const { nip, ...updatePayload } = userData;
+                await updateUser(selectedUser.nip, updatePayload);
                 setSnackbar({ visible: true, message: 'Pengguna berhasil diperbarui' });
             } else {
                 await createUser(userData as any);

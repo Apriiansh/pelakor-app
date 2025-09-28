@@ -34,11 +34,11 @@ export default function PelaporLayout() {
       fontSize: 11,
       fontWeight: '600',
       marginTop: 4,
-      fontFamily: 'Rubik', // Use custom font
+      fontFamily: 'Rubik',
     },
     centerTabLabel: {
       fontWeight: 'bold',
-      fontFamily: 'RubikBold', // Use bold font for center tab
+      fontFamily: 'RubikBold', 
     },
     tabBarItem: {
       paddingVertical: 4,

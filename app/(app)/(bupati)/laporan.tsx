@@ -143,11 +143,11 @@ export default function LaporanBupatiScreen() {
                         onPress={() => router.replace('/(app)/(bupati)/home')}
                         style={styles.backButton}
                     />
-                    <Text style={styles.headerTitle}>Laporan Selesai</Text>
+                    <Text style={styles.headerTitle}>Laporan di Bagian Umum</Text>
                     <View style={styles.placeholder} />
                 </View>
                 <Text style={styles.headerSubtitle}>
-                    Daftar semua laporan yang telah selesai di lingkup kabupaten
+                    Daftar semua laporan yang telah selesai di Kabutapen Ogan Ilir
                 </Text>
             </View>
         </LinearGradient>

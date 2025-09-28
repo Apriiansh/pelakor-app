@@ -1,32 +1,32 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useEffect, useState, useCallback } from 'react';
-import { ScrollView, StyleSheet, Text, View, Dimensions, RefreshControl, TouchableOpacity } from 'react-native';
-import { Avatar, Card, IconButton, Button, Badge } from 'react-native-paper';
+import { ScrollView, StyleSheet, Text, View, Dimensions, RefreshControl, TouchableOpacity, Alert } from 'react-native';
+import { Avatar, Card, IconButton, Button, ActivityIndicator } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useAppTheme } from '@/context/ThemeContext';
+import { getTindakLanjut, getLaporanSelesai, Laporan, ApiError } from '@/utils/api';
 
 const { width } = Dimensions.get('window');
 
-// --- DUMMY DATA UNTUK SUBBAG UMUM ---
-const dummyStats = [
-    { name: 'Perlu Tindak Lanjut', value: 15, icon: 'progress-wrench', type: 'amber' },
-    { name: 'Selesai Dikerjakan', value: 128, icon: 'check-decagram', type: 'green' },
-];
+interface TindakLanjutLaporan extends Laporan {
+    catatan_disposisi?: string;
+    tanggal_disposisi?: string;
+    kabbag_umum?: string;
+}
 
-const dummyTindakLanjut = [
-    { id: 'TL001', title: 'Perbaikan Pintu Ruang Server', from: 'Bagian Umum', status: 'Ditugaskan', date: '1 jam lalu' },
-    { id: 'TL002', title: 'Pengadaan ATK Tambahan', from: 'Bagian Perencanaan', status: 'Dalam Pengerjaan', date: '3 jam lalu' },
-    { id: 'TL003', title: 'Pemasangan Proyektor Baru', from: 'Bagian Tata Pemerintahan', status: 'Ditugaskan', date: '1 hari lalu' },
-    { id: 'TL004', title: 'Perawatan Rutin AC Gedung A', from: 'Bagian Umum', status: 'Selesai', date: '2 hari lalu' },
-];
-// --- END DUMMY DATA ---
+const initialStats = { perluTindakLanjut: 0, selesai: 0 };
 
 export default function SubbagUmumHomeScreen() {
     const [user, setUser] = useState<{ nama: string; jabatan: string } | null>(null);
     const [currentTime, setCurrentTime] = useState(new Date());
     const [refreshing, setRefreshing] = useState(false);
+    const [loading, setLoading] = useState(true);
+
+    // State untuk data asli
+    const [stats, setStats] = useState(initialStats);
+    const [tindakLanjutList, setTindakLanjutList] = useState<TindakLanjutLaporan[]>([]);
 
     const router = useRouter();
     const { theme } = useAppTheme();
@@ -44,20 +44,42 @@ export default function SubbagUmumHomeScreen() {
             }
         };
 
+        fetchDashboardData();
         fetchUserData();
 
         const timer = setInterval(() => setCurrentTime(new Date()), 60000);
         return () => clearInterval(timer);
     }, []);
 
-    const onRefresh = useCallback(() => {
-        setRefreshing(true);
-        // Simulasi fetch data baru
-        setTimeout(() => {
-            console.log("Data refreshed for Subbag Umum!");
-            setRefreshing(false);
-        }, 1500);
+    const fetchDashboardData = useCallback(async () => {
+        setLoading(true);
+        try {
+            // Ambil data secara paralel
+            const [tindakLanjutData, selesaiData] = await Promise.all([
+                getTindakLanjut(),
+                getLaporanSelesai()
+            ]);
+
+            setTindakLanjutList(tindakLanjutData);
+            setStats({
+                perluTindakLanjut: tindakLanjutData.length,
+                selesai: selesaiData.length,
+            });
+
+        } catch (error) {
+            const message = error instanceof ApiError ? error.message : "Gagal memuat data dashboard";
+            Alert.alert('Error', message);
+            console.error("Failed to fetch dashboard data", error);
+        } finally {
+            setLoading(false);
+        }
     }, []);
+
+    const onRefresh = useCallback(async () => {
+        setRefreshing(true);
+        await fetchDashboardData();
+        setRefreshing(false);
+    }, [fetchDashboardData]);
 
     const getGreeting = () => {
         const hour = currentTime.getHours();
@@ -81,45 +103,49 @@ export default function SubbagUmumHomeScreen() {
         }
     };
 
-    const handleTindakLanjutPress = (item: typeof dummyTindakLanjut[0]) => {
-        // Navigasi ke halaman detail atau form tindak lanjut
-        router.push({
-            pathname: '/(app)/(subbag-umum)/tindak-lanjut',
-            params: { id: item.id, title: item.title }
-        });
+    const handleTindakLanjutPress = () => {
+        router.push('/(app)/(subbag-umum)/tindak-lanjut');
     };
 
     // --- RENDER FUNCTIONS ---
-    const renderStatCard = (stat: typeof dummyStats[0]) => {
-        const statColor = getStatColorByType(stat.type);
+    const renderStatCard = (name: string, value: number, icon: string, type: 'amber' | 'green') => {
+        const statColor = getStatColorByType(type);
         return (
-            <Card key={stat.name} style={[styles.statCard, { backgroundColor: theme.colors.surface }]} elevation={2}>
+            <Card key={name} style={[styles.statCard, { backgroundColor: theme.colors.surface }]} elevation={2}>
                 <Card.Content style={styles.statCardContent}>
-                    <IconButton icon={stat.icon} size={32} iconColor={statColor} style={styles.statIcon} />
-                    <Text style={[styles.statValue, { color: statColor }]}>{stat.value}</Text>
-                    <Text style={[styles.statName, { color: theme.colors.onSurfaceVariant }]}>{stat.name}</Text>
+                    <IconButton icon={icon} size={32} iconColor={statColor} style={styles.statIcon} />
+                    <Text style={[styles.statValue, { color: statColor }]}>{value}</Text>
+                    <Text style={[styles.statName, { color: theme.colors.onSurfaceVariant }]}>{name}</Text>
                 </Card.Content>
             </Card>
         );
     };
 
-    const renderTindakLanjutItem = (item: typeof dummyTindakLanjut[0]) => {
+    const renderTindakLanjutItem = (item: TindakLanjutLaporan) => {
+        const statusConfig = {
+            diproses: { label: 'Baru', color: theme.colors.warning },
+            ditindaklanjuti: { label: 'Dalam Proses', color: theme.colors.backdrop },
+        };
+        const statusInfo = statusConfig[item.status_laporan as keyof typeof statusConfig] || { label: item.status_laporan, color: theme.colors.onSurfaceVariant };
+
         return (
-            <Card key={item.id} style={[styles.recentCard, { backgroundColor: theme.colors.surface, borderLeftColor: theme.colors.primary }]} elevation={1}>
-                <TouchableOpacity onPress={() => handleTindakLanjutPress(item)}>
+            <Card key={item.id_laporan} style={[styles.recentCard, { backgroundColor: theme.colors.surface, borderLeftColor: theme.colors.primary }]} elevation={1}>
+                <TouchableOpacity onPress={handleTindakLanjutPress}>
                     <Card.Content style={styles.recentCardContent}>
                         <View style={styles.recentCardLeft}>
-                            <View style={styles.recentCardHeader}>
-                                <Text style={[styles.recentId, { color: theme.colors.primary }]}>{item.id}</Text>
-                            </View>
-                            <Text style={[styles.recentTitle, { color: theme.colors.onSurface }]} numberOfLines={2}>{item.title}</Text>
+                            {/* <View style={styles.recentCardHeader}>
+                                <Text style={[styles.recentId, { color: theme.colors.primary }]}>ID: {item.id_laporan}</Text>
+                            </View> */}
+                            <Text style={[styles.recentTitle, { color: theme.colors.onSurface }]} numberOfLines={2}>{item.judul_laporan}</Text>
                             <Text style={[styles.recentInfo, { color: theme.colors.onSurfaceVariant }]}>
-                                Dari: {item.from}
+                                Dari: {item.pelapor}
                             </Text>
                             <View style={styles.recentFooter}>
-                                <Text style={[styles.recentDate, { color: theme.colors.onSurfaceVariant }]}>{item.date}</Text>
-                                <View style={[styles.statusBadge, { backgroundColor: item.status === 'Selesai' ? theme.colors.success : theme.colors.warning }]}>
-                                    <Text style={[styles.statusText, { color: theme.colors.onError }]}>{item.status}</Text>
+                                <Text style={[styles.recentDate, { color: theme.colors.onSurfaceVariant }]}>
+                                    {new Date(item.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
+                                </Text>
+                                <View style={[styles.statusBadge, { backgroundColor: statusInfo.color }]}>
+                                    <Text style={[styles.statusText, { color: theme.colors.onError }]}>{statusInfo.label}</Text>
                                 </View>
                             </View>
                         </View>
@@ -213,9 +239,12 @@ export default function SubbagUmumHomeScreen() {
 
             <View style={styles.statsSection}>
                 <Text style={styles.sectionTitle}>Overview Pekerjaan</Text>
-                <View style={styles.statsGrid}>
-                    {dummyStats.map(renderStatCard)}
-                </View>
+                {loading ? <ActivityIndicator style={{ marginVertical: 20 }} /> : (
+                    <View style={styles.statsGrid}>
+                        {renderStatCard('Perlu Tindak Lanjut', stats.perluTindakLanjut, 'progress-wrench', 'amber')}
+                        {renderStatCard('Selesai Dikerjakan', stats.selesai, 'check-decagram', 'green')}
+                    </View>
+                )}
             </View>
 
             <View style={styles.recentSection}>
@@ -223,16 +252,24 @@ export default function SubbagUmumHomeScreen() {
                     <Text style={styles.sectionTitle}>Daftar Tindak Lanjut</Text>
                     <Button 
                         mode="text" 
-                        onPress={() => router.push('/(app)/(subbag-umum)/tindak-lanjut')} 
+                        onPress={handleTindakLanjutPress}
                         labelStyle={styles.viewAllButton}
                         textColor={theme.colors.primary}
                     >
                         Lihat Semua
                     </Button>
                 </View>
-                <View style={styles.recentList}>
-                    {dummyTindakLanjut.filter(item => item.status !== 'Selesai').map(renderTindakLanjutItem)}
-                </View>
+                {loading ? <ActivityIndicator style={{ marginVertical: 20 }} /> : (
+                    tindakLanjutList.length > 0 ? (
+                        <View style={styles.recentList}>
+                            {tindakLanjutList.slice(0, 3).map(renderTindakLanjutItem)}
+                        </View>
+                    ) : (
+                        <Text style={{ textAlign: 'center', color: theme.colors.onSurfaceVariant, padding: 20 }}>
+                            Tidak ada pekerjaan yang perlu ditindaklanjuti saat ini.
+                        </Text>
+                    )
+                )}
             </View>
         </ScrollView>
     );

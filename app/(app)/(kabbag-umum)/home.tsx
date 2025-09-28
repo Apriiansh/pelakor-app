@@ -1,53 +1,39 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useEffect, useState, useCallback } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View, Dimensions, RefreshControl } from 'react-native';
-import { Avatar, Badge, Card, IconButton } from 'react-native-paper';
+import { Avatar, Badge, Card, IconButton, Menu, ActivityIndicator } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
-import { PieChart } from 'react-native-chart-kit';
+import { BarChart } from 'react-native-chart-kit';
 import { useAppTheme } from '@/context/ThemeContext';
+import { getLaporanDiajukan, getLaporanStats, Laporan, LaporanStats, ApiError } from '@/utils/api';
+import { useRouter } from 'expo-router';
 
 const { width } = Dimensions.get('window');
 
-// Data 10 bagian Sekretariat Daerah Kab Ogan Ilir
-const departmentStats = [
-  { name: 'Bagian Tata Pemerintahan & Kerjasama', value: 120, color: '#3b82f6' },
-  { name: 'Bagian Kesejahteraan Rakyat', value: 85, color: '#10b981' },
-  { name: 'Bagian Hukum', value: 95, color: '#f59e0b' },
-  { name: 'Bagian Perekonomian & Sumber Daya Alam', value: 70, color: '#ef4444' },
-  { name: 'Bagian Administrasi Pembangunan', value: 45, color: '#8b5cf6' },
-  { name: 'Bagian Pengadaian Barang & Jasa', value: 110, color: '#06b6d4' },
-  { name: 'Bagian Umum', value: 88, color: '#84cc16' },
-  { name: 'Bagian Organisasi', value: 65, color: '#f97316' },
-  { name: 'Bagian Protokol Komunikasi & Pimpinan', value: 92, color: '#ec4899' },
-  { name: 'Bagian Perencanaan & Keuangan', value: 77, color: '#6366f1' },
-];
+const initialStats: LaporanStats = {
+  'Memuat...': { diajukan: 0, diproses: 0, ditolak: 0, ditindaklanjuti: 0, selesai: 0 }
+};
 
-const dummyRecent = [
-  {
-    title: 'Konsumsi rapat koordinasi',
-    desc: '50 Snack dan 50 air mineral',
-    from: 'Bagian Umum',
-  },
-  {
-    title: 'Laporan kerusakan printer',
-    desc: 'Printer tidak dapat mencetak dan tinta habis',
-    from: 'Bagian Hukum',
-  },
-  {
-    title: 'Laporan alat kantor',
-    desc: 'Pena, Kertas, staples dan isinya, tinta stampel, dll',
-    from: 'Bagian Organisasi',
-  },
-];
+const initialSelectedDeptData = { diajukan: 0, diproses: 0, ditolak: 0, ditindaklanjuti: 0, selesai: 0 };
 
 export default function HomeKabbagUmum() {
   const [user, setUser] = useState<{ nama: string; role: string } | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  // State for real data
+  const [reportStats, setReportStats] = useState<LaporanStats>(initialStats);
+  const [laporanDiajukan, setLaporanDiajukan] = useState<Laporan[]>([]);
+  const [selectedDepartment, setSelectedDepartment] = useState<string>('');
+  const [menuVisible, setMenuVisible] = useState(false);
+
   const { theme } = useAppTheme();
+  const router = useRouter();
 
   useEffect(() => {
     loadUserData();
+    fetchDashboardData();
 
     const timer = setInterval(() => {
       setCurrentTime(new Date());
@@ -55,7 +41,7 @@ export default function HomeKabbagUmum() {
 
     return () => clearInterval(timer);
   }, []);
-
+  
   const loadUserData = async () => {
     try {
       const userData = await AsyncStorage.getItem('userData');
@@ -67,6 +53,30 @@ export default function HomeKabbagUmum() {
       console.error('Error loading user data:', error);
     }
   };
+
+  const fetchDashboardData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [statsData, diajukanData] = await Promise.all([
+        getLaporanStats(),
+        getLaporanDiajukan()
+      ]);
+
+      setReportStats(statsData);
+      setLaporanDiajukan(diajukanData);
+
+      // Set default selected department to the first one from stats
+      const firstDept = Object.keys(statsData)[0];
+      if (firstDept) {
+        setSelectedDepartment(firstDept);
+      }
+
+    } catch (error) {
+      console.error("Failed to fetch dashboard data:", error instanceof ApiError ? error.message : error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   const getGreeting = () => {
     const hour = currentTime.getHours();
@@ -87,22 +97,58 @@ export default function HomeKabbagUmum() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    // Simulate API call
-    setTimeout(() => {
-      setRefreshing(false);
-    }, 1500);
-  }, []);
+    await fetchDashboardData();
+    setRefreshing(false);
+  }, [fetchDashboardData]);
 
-  const totalReports = departmentStats.reduce((sum, dept) => sum + dept.value, 0);
+  const departments = Object.keys(reportStats);
+  const totalReports = Object.values(reportStats).reduce((total, deptData) => {
+    return total + Object.values(deptData).reduce((sum, val) => sum + val, 0);
+  }, 0);
 
-  // Prepare chart data
-  const chartData = departmentStats.map(dept => ({
-    name: dept.name.replace('Bagian ', ''),
-    population: dept.value,
-    color: dept.color,
-    legendFontColor: theme.colors.onSurfaceVariant,
-    legendFontSize: 12,
-  }));
+  // Prepare chart data based on selected department
+  const statusLabels = ['Diajukan', 'Diproses', 'Ditolak', 'Tindak\nLanjut', 'Selesai'];
+  const selectedDeptData = reportStats[selectedDepartment] || initialSelectedDeptData;
+
+  // Handle case where a department might not have all status keys
+  const chartValues = [
+    selectedDeptData.diajukan || 0,
+    selectedDeptData.diproses || 0,
+    selectedDeptData.ditolak || 0,
+    selectedDeptData.ditindaklanjuti || 0,
+    selectedDeptData.selesai || 0,
+  ];
+  const chartData = {
+    labels: statusLabels,
+    datasets: [
+      {
+        data: chartValues,
+      },
+    ],
+  };
+
+  const chartConfig = {
+    backgroundColor: theme.colors.surface,
+    backgroundGradientFrom: theme.colors.surface,
+    backgroundGradientTo: theme.colors.surface,
+    backgroundGradientFromOpacity: 0,
+    backgroundGradientToOpacity: 0,
+    decimalPlaces: 0,
+    color: (opacity = 1) => theme.colors.primary,
+    labelColor: (opacity = 1) => theme.colors.onSurfaceVariant,
+    style: {
+      borderRadius: 16,
+    },
+    propsForDots: {
+      r: '6',
+      strokeWidth: '2',
+      stroke: theme.colors.primary,
+    },
+    barPercentage: 0.7,
+    useShadowColorFromDataset: false,
+    fillShadowGradient: theme.colors.primary,
+    fillShadowGradientOpacity: 0.8,
+  };
 
   const styles = StyleSheet.create({
     container: {
@@ -181,7 +227,6 @@ export default function HomeKabbagUmum() {
       fontSize: 18,
       fontWeight: 'bold',
       color: theme.colors.onSurface,
-      marginBottom: 16,
       fontFamily: 'RubikBold',
     },
     statsRow: {
@@ -218,61 +263,58 @@ export default function HomeKabbagUmum() {
       paddingHorizontal: 20,
       paddingTop: 32,
     },
+    chartHeader: {
+      flexDirection: 'column',
+      alignItems: 'flex-start',
+      marginBottom: 12,
+      gap: 4,
+    },
     chartCard: {
       borderRadius: 16,
       backgroundColor: theme.colors.surface,
-      padding: 16,
+      overflow: 'hidden',
     },
     chartContainer: {
       alignItems: 'center',
-      marginVertical: 8,
+      paddingVertical: 16,
     },
-
-    // Department Stats
-    departmentSection: {
-      paddingHorizontal: 20,
-      paddingTop: 32,
-    },
-    departmentGrid: {
+    chartTitleContainer: {
       flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: 12,
-    },
-    departmentCard: {
-      width: (width - 52) / 2,
-      borderRadius: 16,
-      backgroundColor: theme.colors.surface,
-    },
-    departmentContent: {
-      padding: 16,
+      justifyContent: 'space-between',
       alignItems: 'center',
-      gap: 8,
-    },
-    departmentIcon: {
-      width: 48,
-      height: 48,
-      borderRadius: 24,
-      alignItems: 'center',
-      justifyContent: 'center',
+      width: '100%',
       marginBottom: 4,
     },
-    departmentName: {
-      fontSize: 13,
-      fontWeight: '600',
-      color: theme.colors.onSurface,
-      textAlign: 'center',
-      fontFamily: 'RubikBold',
+    departmentSelector: {
+      backgroundColor: theme.colors.surfaceVariant,
+      borderRadius: 8,
+      paddingHorizontal: 12,
+      minWidth: 200,
+      maxWidth: 250,
     },
-    departmentValue: {
-      fontSize: 18,
-      fontWeight: 'bold',
-      color: theme.colors.onSurface,
-      fontFamily: 'RubikBold',
+    departmentSelectorButton: {
+      backgroundColor: theme.colors.surface,
+      borderRadius: 12,
+      margin: 0,
+      padding: 0,
+      borderWidth: 1,
     },
-    departmentLabel: {
-      fontSize: 11,
-      color: theme.colors.onSurfaceVariant,
-      fontFamily: 'Rubik',
+    menuContent: {
+      backgroundColor: theme.colors.surface,
+      borderRadius: 8,
+      width: width - 40, // Set a fixed width for the dropdown menu
+      marginTop: 4,
+      elevation: 8,
+      shadowColor: '#000',
+      shadowOffset: {
+        width: 0,
+        height: 4,
+      },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+    },
+    menuScrollView: {
+      maxHeight: 280,
     },
 
     // Recent Activity
@@ -385,18 +427,18 @@ export default function HomeKabbagUmum() {
 
       {/* Statistics Cards */}
       <View style={styles.statsSection}>
-        <Text style={styles.sectionTitle}>Overview Sistem</Text>
+        <Text style={[styles.sectionTitle, { marginBottom: 16 }]}>Overview Sistem</Text>
         <View style={styles.statsRow}>
           <Card style={styles.statCard} elevation={2}>
             <Card.Content style={styles.statContent}>
-              <Text style={styles.statLabel}>Total Pelaporan</Text>
+              <Text style={styles.statLabel}>Total Laporan</Text>
               <Text style={styles.statValue}>{totalReports}</Text>
             </Card.Content>
           </Card>
           <Card style={styles.statCard} elevation={2}>
             <Card.Content style={styles.statContent}>
-              <Text style={styles.statLabel}>Total Bagian</Text>
-              <Text style={styles.statValue}>{departmentStats.length}</Text>
+              <Text style={styles.statLabel}>Total Unit Kerja</Text>
+              <Text style={styles.statValue}>{departments.length}</Text>
             </Card.Content>
           </Card>
         </View>
@@ -404,43 +446,119 @@ export default function HomeKabbagUmum() {
 
       {/* Chart Section */}
       <View style={styles.chartSection}>
-        <Text style={styles.sectionTitle}>Distribusi Laporan per Bagian</Text>
-        <Card style={styles.chartCard} elevation={2}>
-          <View style={styles.chartContainer}>
-            <PieChart
-              data={chartData}
-              width={width - 80}
-              height={220}
-              chartConfig={{
-                backgroundColor: theme.colors.surface,
-                backgroundGradientFrom: theme.colors.surface,
-                backgroundGradientTo: theme.colors.surface,
-                color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-              }}
-              accessor="population"
-              backgroundColor="transparent"
-              paddingLeft="15"
-              center={[10, -10]}
-              absolute
-            />
+        <View style={styles.chartHeader}>
+          <View style={styles.chartTitleContainer}>
+            <Text style={styles.sectionTitle}>Statistik Laporan</Text>
+            <Menu
+              visible={menuVisible}
+              onDismiss={() => setMenuVisible(false)}
+              anchor={
+                <IconButton
+                  icon={menuVisible ? "filter-variant-remove" : "filter-variant"}
+                  size={24}
+                  iconColor={theme.colors.primary}
+                  style={[styles.departmentSelectorButton, { borderColor: menuVisible ? theme.colors.primary : theme.colors.outline }]}
+                  onPress={() => setMenuVisible(!menuVisible)}
+                />
+              }
+              contentStyle={styles.menuContent}
+            >
+            <ScrollView
+              style={styles.menuScrollView}
+              showsVerticalScrollIndicator={true}
+            >
+              {departments.map((dept, index) => (
+                <Menu.Item
+                  key={`dept-${index}`}
+                  onPress={() => {
+                    setSelectedDepartment(dept);
+                    setMenuVisible(false);
+                  }}
+                  title={
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flex: 1 }}>
+                      <Text 
+                        style={{ 
+                          flex: 1, 
+                          flexWrap: 'wrap', 
+                          color: selectedDepartment === dept ? theme.colors.primary : theme.colors.onSurface,
+                          fontFamily: selectedDepartment === dept ? 'RubikBold' : 'Rubik'
+                        }}
+                      >
+                        {dept}
+                      </Text>
+                      {selectedDepartment === dept && <IconButton icon="check" size={16} iconColor={theme.colors.primary} style={{ margin: 0 }} />}
+                    </View>
+                  }
+                  style={{
+                    backgroundColor: selectedDepartment === dept ? theme.colors.primaryContainer : 'transparent',
+                  }}
+                />
+              ))}
+            </ScrollView>
+            </Menu>
           </View>
-        </Card>
+          <Text style={{ color: theme.colors.primary, fontFamily: 'RubikBold' }}>
+            {selectedDepartment}
+          </Text>
+        </View>
+
+        {loading ? (
+          <ActivityIndicator style={{ marginVertical: 40 }} />
+        ) : (
+          <Card style={styles.chartCard} elevation={3}>
+            <View style={styles.chartContainer}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ paddingHorizontal: 10 }}
+              >
+                <BarChart
+                  data={chartData}
+                  width={Math.max(width - 60, 350)}
+                  height={260}
+                  yAxisLabel=""
+                  yAxisSuffix=""
+                  chartConfig={chartConfig}
+                  fromZero
+                  showValuesOnTopOfBars
+                  verticalLabelRotation={0}
+                  style={{
+                    marginVertical: 8,
+                    borderRadius: 16,
+                  }}
+                  yAxisInterval={1}
+                  segments={4}
+                />
+              </ScrollView>
+            </View>
+          </Card>
+        )}
       </View>
 
       {/* Recent Activity Section */}
       <View style={styles.recentSection}>
         <View style={styles.recentHeader}>
           <Text style={styles.recentTitle}>Menunggu Verifikasi</Text>
-          <Badge style={styles.badge} size={24}>{dummyRecent.length}</Badge>
+          <Badge style={styles.badge} size={24}>{laporanDiajukan.length}</Badge>
         </View>
         <View>
-          {dummyRecent.map((item, idx) => (
+          {loading ? (
+            <ActivityIndicator style={{ marginVertical: 20 }} />
+          ) : laporanDiajukan.length === 0 ? (
+            <Text style={{ textAlign: 'center', color: theme.colors.onSurfaceVariant, padding: 20 }}>
+              Tidak ada laporan yang menunggu verifikasi.
+            </Text>
+          ) : (
+            laporanDiajukan.slice(0, 5).map((item, idx) => (
             <Card key={idx} style={styles.recentCard} elevation={1}>
-              <TouchableOpacity style={styles.recentCardContent}>
+              <TouchableOpacity
+                style={styles.recentCardContent}
+                onPress={() => router.push('/(app)/(kabbag-umum)/disposisi_laporan')}
+              >
                 <View style={styles.recentCardLeft}>
-                  <Text style={styles.recentItemTitle}>{item.title}</Text>
-                  <Text style={styles.recentItemDesc}>{item.desc}</Text>
-                  <Text style={styles.recentItemFrom}>dari: {item.from}</Text>
+                  <Text style={styles.recentItemTitle} numberOfLines={1}>{item.judul_laporan}</Text>
+                  <Text style={styles.recentItemDesc} numberOfLines={2}>{item.isi_laporan}</Text>
+                  <Text style={styles.recentItemFrom}>dari: {item.pelapor}</Text>
                 </View>
                 <IconButton
                   icon="eye-outline"
@@ -450,7 +568,8 @@ export default function HomeKabbagUmum() {
                 />
               </TouchableOpacity>
             </Card>
-          ))}
+          ))
+          )}
         </View>
       </View>
     </ScrollView>

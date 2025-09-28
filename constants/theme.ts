@@ -28,7 +28,7 @@ export const LightTheme: CustomTheme = {
     onSurface: '#0f172a', // Mapped from text
     onSurfaceVariant: '#475569', // Mapped from textSecondary
     outlineVariant: '#64748b', // Mapped from subtle
-    secondary: '#3b82f6', // Mapped from accent
+    secondary: '#3b82f6', 
     error: '#ef4444',
     onError: '#ffffff',
     outline: '#e2e8f0',

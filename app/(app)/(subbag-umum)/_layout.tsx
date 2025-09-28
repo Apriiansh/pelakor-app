@@ -60,21 +60,22 @@ export default function SubbagUmumLayout() {
         tabBarLabelStyle: styles.tabBarLabel,
         tabBarItemStyle: styles.tabBarItem,
       }}>
-      <Tabs.Screen
-        name="home"
-        options={{
-          title: 'Home',
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'home' : 'home-outline'} size={26} color={color} />
-          ),
-        }}
-      />
+      
       <Tabs.Screen
         name="tindak-lanjut"
         options={{
           title: 'Tindak Lanjut',
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? 'checkmark-done-circle' : 'checkmark-done-circle-outline'} size={26} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="home"
+        options={{
+          title: 'Home',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'home' : 'home-outline'} size={26} color={color} />
           ),
         }}
       />

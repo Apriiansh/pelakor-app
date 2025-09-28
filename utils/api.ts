@@ -139,7 +139,7 @@ async function apiFetch(endpoint: string, options: RequestInit = {}) {
  * GET /api/laporan
  * Ambil daftar laporan sesuai role user
  */
-export const getLaporan = () => {
+export const getLaporan = (): Promise<Laporan[]> => {
     return apiFetch('/api/laporan');
 };
 
@@ -222,6 +222,52 @@ export const deleteLaporan = (id_laporan: string) => {
     return apiFetch(`/api/laporan/${id_laporan}`, {
         method: 'DELETE',
     });
+};
+
+/**
+ * GET /api/laporan/stats
+ * Ambil statistik laporan untuk dashboard
+ */
+export interface LaporanStats {
+    [bagian: string]: {
+        diajukan: number;
+        diproses: number;
+        ditolak: number;
+        ditindaklanjuti: number;
+        selesai: number;
+    };
+}
+export const getLaporanStats = (): Promise<LaporanStats> => {
+    return apiFetch('/api/laporan/stats');
+};
+
+/**
+ * GET /api/laporan/stats-by-unit
+ * Ambil statistik laporan untuk dashboard Kabbag (berdasarkan unit kerja)
+ */
+export interface LaporanUnitStats {
+    diajukan: number;
+    diproses: number;
+    ditolak: number;
+    ditindaklanjuti: number;
+    selesai: number;
+}
+export const getLaporanStatsByUnit = (): Promise<LaporanUnitStats> => {
+    return apiFetch('/api/laporan/stats-by-unit');
+};
+
+/**
+ * GET /api/laporan/stats-bupati
+ * Ambil statistik global untuk dashboard Bupati
+ */
+export interface BupatiStats {
+    total: number;
+    selesai: number;
+    proses: number;
+    diajukan: number;
+}
+export const getBupatiStats = (): Promise<BupatiStats> => {
+    return apiFetch('/api/laporan/stats-bupati');
 };
 
 // --- DISPOSISI ENDPOINTS ---
@@ -390,6 +436,7 @@ export interface Laporan {
     created_at: string;
     updated_at: string;
     tanggal_disposisi?: string;
+    unit_kerja?: string;
     tanggal_tindak_lanjut?: string[]; // Bisa jadi array tanggal
 }
 

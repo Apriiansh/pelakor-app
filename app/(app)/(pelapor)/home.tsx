@@ -1,26 +1,27 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useEffect, useState, useCallback } from 'react';
-import { ScrollView, StyleSheet, Text, View, Dimensions, TouchableOpacity, RefreshControl } from 'react-native';
-import { Avatar, Card, IconButton, Button } from 'react-native-paper';
+import { ScrollView, StyleSheet, Text, View, Dimensions, TouchableOpacity, RefreshControl, Alert } from 'react-native';
+import { Avatar, Card, IconButton, Button, ActivityIndicator } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useAppTheme } from '@/context/ThemeContext';
+import { getLaporan, Laporan, ApiError } from '@/utils/api';
 
 const { width } = Dimensions.get('window');
 
-// --- DUMMY DATA (Dapat diganti dengan data dari API) ---
-const dummyStats = [
-    { name: 'Total Laporan', value: 45, icon: 'file-document-multiple-outline', change: '+12%', type: 'blue' },
-    { name: 'Selesai', value: 28, icon: 'check-circle-outline', change: '+18%', type: 'green' },
-    { name: 'Dalam Proses', value: 8, icon: 'clock-outline', change: '+5%', type: 'amber' },
-    { name: 'Butuh Tindakan', value: 8, icon: 'alert-circle-outline', change: '+15%', type: 'onSurface' },
-];
+interface Stats {
+    total: number;
+    selesai: number;
+    proses: number;
+    diajukan: number;
+}
 
-const dummyRecent = [
-    { id: 'LP001', title: 'Kerusakan AC di Ruang Rapat A', category: 'Maintenance', status: 'Diajukan', statusColor: 'secondary', date: '2 jam lalu', progress: 0 },
-    { id: 'LP002', title: 'Printer tidak dapat mencetak dengan baik', category: 'IT Support', status: 'Diproses', statusColor: 'warning', date: '5 jam lalu', progress: 60 },
-    { id: 'LP003', title: 'Permintaan ATK Bulanan Divisi HR', category: 'Procurement', status: 'Selesai', statusColor: 'success', date: '1 hari lalu', progress: 100 },
-];
+const initialStats: Stats = {
+    total: 0,
+    selesai: 0,
+    proses: 0,
+    diajukan: 0,
+};
 
 const quickActions = [
     { title: 'Laporan Baru', icon: 'plus-circle', colorType: 'primary', action: 'create' },
@@ -28,12 +29,16 @@ const quickActions = [
     { title: 'Kebutuhan', icon: 'shopping', colorType: 'secondary', action: 'template', template: { title: 'Laporan Kebutuhan', category: 'Kebutuhan' } },
     { title: 'Kerusakan', icon: 'wrench', colorType: 'error', action: 'template', template: { title: 'Laporan Kerusakan', category: 'Kerusakan' } },
 ];
-// --- END DUMMY DATA ---
 
 export default function PelaporHomeScreen() {
     const [user, setUser] = useState<{ nama: string; jabatan: string; avatar?: string } | null>(null);
     const [currentTime, setCurrentTime] = useState(new Date());
     const [refreshing, setRefreshing] = useState(false);
+    const [loading, setLoading] = useState(true);
+
+    // State untuk data asli
+    const [stats, setStats] = useState<Stats>(initialStats);
+    const [recentReports, setRecentReports] = useState<Laporan[]>([]);
 
     const router = useRouter();
     const { theme } = useAppTheme();
@@ -51,6 +56,7 @@ export default function PelaporHomeScreen() {
         };
 
         fetchUserData();
+        fetchDashboardData();
     }, []);
 
     useEffect(() => {
@@ -61,16 +67,34 @@ export default function PelaporHomeScreen() {
         return () => clearInterval(timer);
     }, []);
 
-    // IMPROVEMENT: Implementasi fungsi onRefresh dengan useCallback untuk performa
-    const onRefresh = useCallback(() => {
-        setRefreshing(true);
-        // Simulasi fetch data baru (misal: laporan terbaru, statistik)
-        // Di aplikasi nyata, di sini Anda akan memanggil API
-        setTimeout(() => {
-            console.log("Data refreshed!");
-            setRefreshing(false);
-        }, 2000);
+    const fetchDashboardData = useCallback(async () => {
+        setLoading(true);
+        try {
+            const laporanData = await getLaporan();
+
+            // Kalkulasi statistik
+            const total = laporanData.length;
+            const selesai = laporanData.filter(l => l.status_laporan === 'selesai').length;
+            const proses = laporanData.filter(l => ['diproses', 'ditindaklanjuti'].includes(l.status_laporan)).length;
+            const diajukan = laporanData.filter(l => l.status_laporan === 'diajukan').length;
+
+            setStats({ total, selesai, proses, diajukan });
+            setRecentReports(laporanData.slice(0, 3)); // Ambil 3 laporan terbaru
+
+        } catch (error) {
+            const message = error instanceof ApiError ? error.message : "Gagal memuat data dashboard";
+            Alert.alert('Error', message);
+            console.error("Failed to fetch dashboard data", error);
+        } finally {
+            setLoading(false);
+        }
     }, []);
+
+    const onRefresh = useCallback(async () => {
+        setRefreshing(true);
+        await fetchDashboardData();
+            setRefreshing(false);
+    }, [fetchDashboardData]);
 
     const getGreeting = () => {
         const hour = currentTime.getHours();
@@ -95,6 +119,7 @@ export default function PelaporHomeScreen() {
             case 'warning': return theme.colors.warning;
             case 'success': return theme.colors.success;
             case 'blue': return theme.colors.blueLight;
+            case 'orange': return theme.colors.warning;
             case 'amber': return theme.colors.amberLight;
             default: return theme.colors.primary;
         }
@@ -105,7 +130,7 @@ export default function PelaporHomeScreen() {
             case 'blue': return theme.colors.blueLight;
             case 'amber': return theme.colors.amberLight;
             case 'green': return theme.colors.greenLight;
-            case 'onSurface': return theme.colors.inversePrimary;
+            case 'orange': return theme.colors.warning;
             case 'error': return theme.colors.error;
             default: return theme.colors.primaryLight + '20';
         }
@@ -131,21 +156,18 @@ export default function PelaporHomeScreen() {
     }, [router]);
 
     // --- RENDER FUNCTIONS ---
-    const renderStatCard = (stat: typeof dummyStats[0]) => {
-        const backgroundColor = getBackgroundByType(stat.type);
-        const iconColor = getStatIconColor(stat.type);
+    const renderStatCard = (name: string, value: number, icon: string, type: string) => {
+        const backgroundColor = getBackgroundByType(type);
+        const iconColor = getStatIconColor(type);
 
         return (
-            <Card key={stat.name} style={[styles.statCard, { backgroundColor }]} elevation={2}>
+            <Card key={name} style={[styles.statCard, { backgroundColor }]} elevation={2}>
                 <Card.Content style={styles.statCardContent}>
                     <View style={styles.statCardHeader}>
-                        <IconButton icon={stat.icon} size={28} iconColor={iconColor as string} style={styles.statIcon} />
-                        <Text style={[styles.statChange, { color: stat.change.startsWith('+') ? theme.colors.success : theme.colors.error }]}>
-                            {stat.change}
-                        </Text>
+                        <IconButton icon={icon} size={28} iconColor={iconColor as string} style={styles.statIcon} />
                     </View>
-                    <Text style={[styles.statValue, { color: theme.colors.onSurface }]}>{stat.value}</Text>
-                    <Text style={[styles.statName, { color: theme.colors.onSurfaceVariant }]}>{stat.name}</Text>
+                    <Text style={[styles.statValue, { color: theme.colors.onSurface }]}>{value}</Text>
+                    <Text style={[styles.statName, { color: theme.colors.onSurfaceVariant }]}>{name}</Text>
                 </Card.Content>
             </Card>
         );
@@ -169,34 +191,40 @@ export default function PelaporHomeScreen() {
         );
     };
 
-    const renderRecentItem = (item: typeof dummyRecent[0]) => {
-        const statusColor = getColorByType(item.statusColor);
+    const renderRecentItem = (item: Laporan) => {
+        const statusConfig = {
+            diajukan: { label: 'Diajukan', color: theme.colors.secondary },
+            diproses: { label: 'Diproses', color: theme.colors.warning },
+            ditindaklanjuti: { label: 'Ditindaklanjuti', color: theme.colors.blueLight },
+            ditolak: { label: 'Ditolak', color: theme.colors.error },
+            selesai: { label: 'Selesai', color: theme.colors.success },
+        };
+        const statusInfo = statusConfig[item.status_laporan] || { label: item.status_laporan, color: theme.colors.onSurfaceVariant };
+        const date = new Date(item.created_at);
+        const formattedDate = date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+
         return (
-            <Card key={item.id} style={[styles.recentCard, { backgroundColor: theme.colors.surface, borderLeftColor: theme.colors.primary }]} elevation={1}>
-                <Card.Content style={styles.recentCardContent}>
-                    <View style={styles.recentCardLeft}>
-                        <View style={styles.recentCardHeader}>
-                            <Text style={[styles.recentId, { color: theme.colors.primary }]}>{item.id}</Text>
-                            <View style={[styles.statusBadge, { backgroundColor: theme.colors.primaryLight }]}>
-                                <Text style={[styles.statusText, { color: theme.colors.onSurface }]}>{item.status}</Text>
-                            </View>
-                        </View>
-                        <Text style={[styles.recentTitle, { color: theme.colors.onSurface }]} numberOfLines={2}>{item.title}</Text>
-                        <Text style={[styles.recentCategory, { color: theme.colors.onSurfaceVariant }]}>{item.category}</Text>
-                        <View style={styles.recentFooter}>
-                            <Text style={[styles.recentDate, { color: theme.colors.onSurfaceVariant }]}>{item.date}</Text>
-                        </View>
-                        {item.progress > 0 && (
-                            <View style={styles.progressContainer}>
-                                <View style={[styles.progressBar, { backgroundColor: theme.colors.primaryLight + '20' }]}>
-                                    <View style={[styles.progressFill, { width: `${item.progress}%`, backgroundColor: statusColor }]} />
+            <Card key={item.id_laporan} style={[styles.recentCard, { backgroundColor: theme.colors.surface, borderLeftColor: theme.colors.primary }]} elevation={1}>
+                <TouchableOpacity onPress={() => router.push('/(app)/(pelapor)/riwayat-laporan')}>
+                    <Card.Content style={styles.recentCardContent}>
+                        <View style={styles.recentCardLeft}>
+                            <View style={styles.recentCardHeader}>
+                                <Text style={[styles.recentId, { color: theme.colors.primary }]}>ID: {item.id_laporan}</Text>
+                                <View style={[styles.statusBadge, { backgroundColor: statusInfo.color + '20' }]}>
+                                    <Text style={[styles.statusText, { color: statusInfo.color }]}>{statusInfo.label}</Text>
                                 </View>
-                                <Text style={[styles.progressText, { color: theme.colors.onSurfaceVariant }]}>{item.progress}%</Text>
                             </View>
-                        )}
-                    </View>
-                    <IconButton icon="chevron-right" size={20} iconColor={theme.colors.onSurfaceVariant as string} style={{ margin: 0 }} />
-                </Card.Content>
+                            <Text style={[styles.recentTitle, { color: theme.colors.onSurface }]} numberOfLines={2}>{item.judul_laporan}</Text>
+                            {item.kategori && (
+                                <Text style={[styles.recentCategory, { color: theme.colors.onSurfaceVariant }]}>{item.kategori}</Text>
+                            )}
+                            <View style={styles.recentFooter}>
+                                <Text style={[styles.recentDate, { color: theme.colors.onSurfaceVariant }]}>{formattedDate}</Text>
+                            </View>
+                        </View>
+                        <IconButton icon="chevron-right" size={20} iconColor={theme.colors.onSurfaceVariant as string} style={{ margin: 0 }} />
+                    </Card.Content>
+                </TouchableOpacity>
             </Card>
         );
     };
@@ -231,7 +259,6 @@ export default function PelaporHomeScreen() {
         statCardContent: { padding: 16 },
         statCardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
         statIcon: { margin: 0 },
-        statChange: { fontSize: 12, fontFamily: 'RubikBold' },
         statValue: { fontSize: 28, marginBottom: 4, fontFamily: 'RubikBold' },
         statName: { fontSize: 13, fontFamily: 'Rubik' },
         recentSection: { paddingHorizontal: 20, paddingTop: 32 },
@@ -243,16 +270,12 @@ export default function PelaporHomeScreen() {
         recentCardLeft: { flex: 1, gap: 8 },
         recentCardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
         recentId: { fontSize: 12, fontFamily: 'RubikBold' },
-        statusBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12 },
-        statusText: { fontSize: 10, fontFamily: 'RubikBold' },
+        statusBadge: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 12 },
+        statusText: { fontSize: 11, fontFamily: 'RubikBold' },
         recentTitle: { fontSize: 15, lineHeight: 20, fontFamily: 'RubikBold' },
         recentCategory: { fontSize: 12, fontFamily: 'Rubik' },
         recentFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
         recentDate: { fontSize: 11, fontFamily: 'Rubik' },
-        progressContainer: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-        progressBar: { flex: 1, height: 4, borderRadius: 2 },
-        progressFill: { height: '100%', borderRadius: 2 },
-        progressText: { fontSize: 11, minWidth: 28, fontFamily: 'RubikBold' },
     });
 
     return (
@@ -307,9 +330,14 @@ export default function PelaporHomeScreen() {
 
             <View style={styles.statsSection}>
                 <Text style={styles.sectionTitle}>Overview</Text>
-                <View style={styles.statsGrid}>
-                    {dummyStats.map(renderStatCard)}
-                </View>
+                {loading ? <ActivityIndicator style={{ marginVertical: 20 }} /> : (
+                    <View style={styles.statsGrid}>
+                        {renderStatCard('Total Laporan', stats.total, 'file-document-multiple-outline', 'blue')}
+                        {renderStatCard('Selesai', stats.selesai, 'check-circle-outline', 'green')}
+                        {renderStatCard('Dalam Proses', stats.proses, 'clock-outline', 'amber')}
+                        {renderStatCard('Diajukan', stats.diajukan, 'alert-circle-outline', 'orange')}
+                    </View>
+                )}
             </View>
 
             <View style={styles.recentSection}>
@@ -319,9 +347,17 @@ export default function PelaporHomeScreen() {
                         Lihat Semua
                     </Button>
                 </View>
-                <View style={styles.recentList}>
-                    {dummyRecent.map(renderRecentItem)}
-                </View>
+                {loading ? <ActivityIndicator style={{ marginVertical: 20 }} /> : (
+                    recentReports.length > 0 ? (
+                        <View style={styles.recentList}>
+                            {recentReports.map(renderRecentItem)}
+                        </View>
+                    ) : (
+                        <Text style={{ textAlign: 'center', color: theme.colors.onSurfaceVariant, padding: 20 }}>
+                            Anda belum membuat laporan.
+                        </Text>
+                    )
+                )}
             </View>
         </ScrollView>
     );
