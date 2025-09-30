@@ -1,6 +1,6 @@
 import { Tabs } from "expo-router";
 import React, { useMemo } from "react";
-import { StyleSheet, Platform, useWindowDimensions, View, Pressable, Text } from "react-native";
+import { StyleSheet, Platform, useWindowDimensions, View, Pressable, Text, Image } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { HapticTab } from "@/components/haptic-tab";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -59,10 +59,6 @@ export default function BupatiLayout() {
                     paddingVertical: 4,
                 },
                 topBarContainer: {
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    right: 0,
                     height: 64,
                     backgroundColor: theme.colors.surface,
                     borderBottomWidth: 1,
@@ -72,11 +68,26 @@ export default function BupatiLayout() {
                     shadowOpacity: 0.1,
                     shadowRadius: 8,
                     elevation: 4,
-                    zIndex: 1000,
                     flexDirection: "row",
                     alignItems: "center",
-                    justifyContent: "center",
+                    justifyContent: "space-between",
                     paddingHorizontal: 24,
+                },
+                topBarLeft: {
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 12,
+                },
+                logo: {
+                    width: 40,
+                    height: 40,
+                    resizeMode: "contain",
+                },
+                appTitle: {
+                    fontSize: 18,
+                    fontWeight: "700",
+                    fontFamily: "RubikBold",
+                    color: theme.colors.onSurface,
                 },
                 topBarNav: {
                     flexDirection: "row",
@@ -101,8 +112,8 @@ export default function BupatiLayout() {
                     fontWeight: "600",
                     fontFamily: "Rubik",
                 },
-                webContent: {
-                    paddingTop: 64,
+                webWrapper: {
+                    flex: 1,
                 },
             }),
         [theme]
@@ -118,8 +129,18 @@ export default function BupatiLayout() {
 
     if (showTopBar) {
         return (
-            <>
+            <View style={styles.webWrapper}>
                 <View style={styles.topBarContainer}>
+                    {/* Logo dan Nama Aplikasi */}
+                    <View style={styles.topBarLeft}>
+                        <Image
+                            source={require('@/assets/images/logo.png')}
+                            style={styles.logo}
+                        />
+                        <Text style={styles.appTitle}>Nama Aplikasi</Text>
+                    </View>
+
+                    {/* Navigation Items */}
                     <View style={styles.topBarNav}>
                         {navigationItems.map((item) => {
                             const isActive = isRouteActive(item.name);
@@ -168,11 +189,11 @@ export default function BupatiLayout() {
                         tabBarStyle: { display: "none" },
                     }}
                 >
-                    <Tabs.Screen name="laporan" />
                     <Tabs.Screen name="home" />
+                    <Tabs.Screen name="laporan" />
                     <Tabs.Screen name="profil" />
                 </Tabs>
-            </>
+            </View>
         );
     }
 

@@ -4,7 +4,7 @@
     "slug": "pelakor-app",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/logo-kabupaten-ogan-ilir.png",
     "scheme": "pelakorapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -19,18 +19,19 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.umumoi.pelakor"
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/logo-kabupaten-ogan-ilir.png"
     },
     "plugins": [
       "expo-router",
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
+          "image": "./assets/images/logo-kabupaten-ogan-ilir.png",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff",
@@ -39,7 +40,15 @@
           }
         }
       ],
-      "expo-font"
+      "expo-font",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
@@ -48,9 +57,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "4bc5e468-c7d9-4e0c-b2aa-5f9b3cabab56"
+        "projectId": "70d9fb16-7010-45c1-8e91-949656c8fb42"
       }
     },
-    "owner": "apri27-org"
+    "owner": "apri27"
   }
 }
