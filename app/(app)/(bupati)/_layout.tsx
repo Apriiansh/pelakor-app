@@ -134,10 +134,10 @@ export default function BupatiLayout() {
                     {/* Logo dan Nama Aplikasi */}
                     <View style={styles.topBarLeft}>
                         <Image
-                            source={require('@/assets/images/logo.png')}
+                            source={require('@/assets/images/logo-kabupaten-ogan-ilir.png')}
                             style={styles.logo}
                         />
-                        <Text style={styles.appTitle}>Nama Aplikasi</Text>
+                        <Text style={styles.appTitle}>Pelakor</Text>
                     </View>
 
                     {/* Navigation Items */}

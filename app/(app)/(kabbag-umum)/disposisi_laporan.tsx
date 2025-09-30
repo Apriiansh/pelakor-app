@@ -7,6 +7,7 @@ import {
     Text,
     StyleSheet,
     RefreshControl,
+    Platform
 } from 'react-native';
 import {
     Button,
@@ -43,6 +44,14 @@ export default function DisposisiScreen() {
         lainnya: { label: 'Lainnya', icon: 'help-circle', color: theme.colors.onSurfaceVariant },
     };
 
+    const showAppAlert = (title: string, message: string) => {
+        if (Platform.OS === 'web') {
+            alert(`${title}\n\n${message}`);
+        } else {
+            Alert.alert(title, message);
+        }
+    };
+
     useEffect(() => {
         loadData();
     }, []);
@@ -59,7 +68,7 @@ export default function DisposisiScreen() {
         } catch (error) {
             console.error('Error loading data:', error);
             const errorMessage = error instanceof ApiError ? error.message : 'Gagal memuat data';
-            Alert.alert('Error', errorMessage);
+            showAppAlert('Error', errorMessage);
         } finally {
             setLoading(false);
         }
@@ -72,7 +81,7 @@ export default function DisposisiScreen() {
         } catch (error) {
             console.error('Error loading laporan:', error);
             const errorMessage = error instanceof ApiError ? error.message : 'Gagal memuat laporan';
-            Alert.alert('Error', errorMessage);
+            showAppAlert('Error', errorMessage);
         }
     };
 
@@ -167,12 +176,14 @@ export default function DisposisiScreen() {
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
                 refreshControl={
-                    <RefreshControl
-                        refreshing={refreshing}
-                        onRefresh={onRefresh}
-                        colors={[theme.colors.primary]}
-                        tintColor={theme.colors.primary}
-                    />
+                    Platform.OS === 'web' ? undefined : (
+                        <RefreshControl
+                            refreshing={refreshing}
+                            onRefresh={onRefresh}
+                            colors={[theme.colors.primary]}
+                            tintColor={theme.colors.primary}
+                        />
+                    )
                 }
             >
                 {laporan.length === 0 ? (

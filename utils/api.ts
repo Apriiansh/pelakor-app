@@ -79,14 +79,20 @@ async function apiFetch(endpoint: string, options: RequestInit = {}) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
-    try {
-        console.log(`API Request: ${options.method || 'GET'} ${API_BASE_URL}${endpoint}`);
+    const fetchOptions: RequestInit = {
+        ...options,
+        headers,
+        signal: controller.signal,
+    };
 
-        const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-            ...options,
-            headers,
-            signal: controller.signal,
-        });
+    if (!fetchOptions.method || fetchOptions.method === 'GET') {
+        fetchOptions.cache = 'no-cache';
+    }
+
+    try {
+        console.log(`API Request: ${fetchOptions.method || 'GET'} ${API_BASE_URL}${endpoint}`);
+
+        const response = await fetch(`${API_BASE_URL}${endpoint}`, fetchOptions);
 
         clearTimeout(timeoutId);
 
@@ -101,7 +107,7 @@ async function apiFetch(endpoint: string, options: RequestInit = {}) {
             }
             
             throw new ApiError(
-                errorData.message || `HTTP ${response.status}: ${response.statusText}`, 
+                errorData.message || `HTTP ${response.status}: ${response.statusText}`,
                 response.status
             );
         }
@@ -132,7 +138,6 @@ async function apiFetch(endpoint: string, options: RequestInit = {}) {
         throw new ApiError('Terjadi kesalahan yang tidak terduga', 500);
     }
 }
-
 // --- LAPORAN ENDPOINTS ---
 
 /**

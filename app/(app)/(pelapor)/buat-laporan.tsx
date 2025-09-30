@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Alert, Image, ScrollView, Text, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
+import { View, Alert, Image, ScrollView, Text, StyleSheet, Dimensions, TouchableOpacity, Platform } from 'react-native';
 import { TextInput, Button, IconButton, Card, Portal, Modal } from 'react-native-paper';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -38,6 +38,14 @@ export default function BuatLaporanScreen() {
         }
     }, [params]);
 
+    const showAppAlert = (title: string, message: string) => {
+        if (Platform.OS === 'web') {
+            alert(`${title}\n\n${message}`);
+        } else {
+            Alert.alert(title, message);
+        }
+    }
+
     const pickFile = async () => {
         try {
             // Menggabungkan pemilihan gambar dan dokumen
@@ -55,14 +63,18 @@ export default function BuatLaporanScreen() {
             }
         } catch (error) {
             console.error('Error picking file:', error);
-            Alert.alert('Error', 'Gagal memilih file.');
+            showAppAlert('Error', 'Gagal memilih file.');
         }
     };
 
     const pickCamera = async () => {
+        if (Platform.OS === 'web') {
+            showAppAlert('Info', 'Fitur kamera tidak tersedia di web. Silakan upload file.');
+            return;
+        }
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
         if (status !== 'granted') {
-            Alert.alert('Izin ditolak', 'Akses kamera dibutuhkan untuk ambil foto.');
+            showAppAlert('Izin ditolak', 'Akses kamera dibutuhkan untuk ambil foto.');
             return;
         }
         const result = await ImagePicker.launchCameraAsync({
@@ -80,11 +92,11 @@ export default function BuatLaporanScreen() {
 
     const handleSubmit = async () => {
         if (!judul_laporan.trim() || !isi_laporan.trim()) {
-            Alert.alert('Validasi Error', 'Judul dan Deskripsi wajib diisi');
+            showAppAlert('Validasi Error', 'Judul dan Deskripsi wajib diisi');
             return;
         }
         if (!kategori) {
-            Alert.alert('Validasi Error', 'Pilih kategori laporan');
+            showAppAlert('Validasi Error', 'Pilih kategori laporan');
             return;
         }
 
@@ -92,7 +104,7 @@ export default function BuatLaporanScreen() {
         try {
             const token = await AsyncStorage.getItem('userToken');
             if (!token) {
-                Alert.alert('Error', 'Anda belum login');
+                showAppAlert('Error', 'Anda belum login');
                 setLoading(false);
                 return;
             }
@@ -103,18 +115,26 @@ export default function BuatLaporanScreen() {
             formData.append('kategori', kategori);
 
             if (lampiran) {
-                formData.append('lampiran', {
-                    uri: lampiran.uri,
-                    name: lampiran.name || `lampiran.${lampiran.mimeType?.split('/')[1] || 'jpg'}`,
-                    type: lampiran.mimeType || 'image/jpeg'
-                } as any);
+                if (Platform.OS === 'web') {
+                    if (lampiran.uri) {
+                        const response = await fetch(lampiran.uri);
+                        const blob = await response.blob();
+                        const filename = lampiran.name || 'lampiran.jpg';
+                        formData.append('lampiran', blob, filename);
+                    }
+                } else {
+                    formData.append('lampiran', {
+                        uri: lampiran.uri,
+                        name: lampiran.name || `lampiran.${lampiran.mimeType?.split('/')[1] || 'jpg'}`,
+                        type: lampiran.mimeType || 'image/jpeg'
+                    } as any);
+                }
             }
 
             const response = await fetch(`${API_URL}/api/laporan`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'multipart/form-data',
                 },
                 body: formData
             });
@@ -124,25 +144,36 @@ export default function BuatLaporanScreen() {
                 throw new Error(data.message || 'Gagal membuat laporan');
             }
 
-            Alert.alert(
-                'Laporan Berhasil Dibuat! ✅',
-                'Laporan Anda telah diterima dan akan segera diproses oleh tim terkait.',
-                [
-                    {
-                        text: 'OK',
-                        onPress: () => {
-                            setJudul('');
-                            setDeskripsi('');
-                            setKategori('');
-                            setLampiran(null);
-                            router.back();
+            const handleSuccess = () => {
+                setJudul('');
+                setDeskripsi('');
+                setKategori('');
+                setLampiran(null);
+                router.back();
+            };
+
+            if (Platform.OS === 'web') {
+                alert('Laporan Berhasil Dibuat! ✅\n\nLaporan Anda telah diterima dan akan segera diproses oleh tim terkait.');
+                handleSuccess();
+            } else {
+                Alert.alert(
+                    'Laporan Berhasil Dibuat! ✅',
+                    'Laporan Anda telah diterima dan akan segera diproses oleh tim terkait.',
+                    [
+                        {
+                            text: 'OK',
+                            onPress: handleSuccess
                         }
-                    }
-                ]
-            );
+                    ]
+                );
+            }
         } catch (err: any) {
             console.error(err);
-            Alert.alert('Error', err.message || 'Terjadi kesalahan saat mengirim laporan');
+            if (Platform.OS === 'web') {
+                alert('Error: ' + (err.message || 'Terjadi kesalahan saat mengirim laporan'));
+            } else {
+                Alert.alert('Error', err.message || 'Terjadi kesalahan saat mengirim laporan');
+            }
         } finally {
             setLoading(false);
         }

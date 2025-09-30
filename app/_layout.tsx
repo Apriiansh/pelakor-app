@@ -11,6 +11,7 @@ export default function RootLayout() {
   const [loaded] = useFonts({
     Rubik: require('../assets/fonts/Rubik-Regular.ttf'),
     RubikBold: require('../assets/fonts/Rubik-Bold.ttf'),
+    RubikMedium: require('../assets/fonts/Rubik-Medium.ttf'),
   });
 
   useEffect(() => {

@@ -1,50 +1,213 @@
 import { Tabs } from 'expo-router';
 import React, { useMemo } from 'react';
-import { StyleSheet, Platform } from 'react-native';
+import { StyleSheet, Platform, useWindowDimensions, View, Pressable, Text, Image } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { HapticTab } from '@/components/haptic-tab';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppTheme } from '@/context/ThemeContext';
+import { usePathname, useRouter } from 'expo-router';
 
 export default function SubbagUmumLayout() {
   const insets = useSafeAreaInsets();
   const { theme } = useAppTheme();
+  const { width } = useWindowDimensions();
+  const pathname = usePathname();
+  const router = useRouter();
 
-  // Memoize styles to prevent unnecessary re-renders
-  const styles = useMemo(() => StyleSheet.create({
-    tabBar: {
-      position: 'absolute',
-      left: 16,
-      right: 16,
-      bottom: 20,
-      borderRadius: 20,
-      paddingHorizontal: 8,
-      paddingTop: 8,
-      shadowColor: theme.colors.shadow,
-      shadowOffset: { width: 0, height: 8 },
-      shadowOpacity: 0.15,
-      shadowRadius: 20,
-      elevation: 15,
-      borderTopWidth: 0,
-      borderWidth: 1,
-      borderColor: theme.colors.outline,
-      backgroundColor: theme.colors.surface,
-    },
-    tabBarLabel: {
-      fontSize: 11,
-      fontWeight: '600',
-      marginTop: 4,
-      fontFamily: 'Rubik', // Use custom font
-    },
-    centerTabLabel: {
-      fontWeight: 'bold',
-      fontFamily: 'RubikBold', // Use bold font for center tab
-    },
-    tabBarItem: {
-      paddingVertical: 4,
-    },
-  }), [theme]);
+  // Deteksi apakah web dan layar besar (>= 768px)
+  const isWeb = Platform.OS === 'web';
+  const isLargeScreen = width >= 768;
+  const showTopBar = isWeb && isLargeScreen;
 
+  const navigationItems = useMemo(
+    () => [
+      {
+        name: 'home',
+        title: 'Home',
+        route: '/(app)/(subbag-umum)/home',
+        iconFocused: 'home',
+        iconOutline: 'home-outline',
+      },
+      {
+        name: 'tindak-lanjut',
+        title: 'Tindak Lanjut',
+        route: '/(app)/(subbag-umum)/tindak-lanjut',
+        iconFocused: 'checkmark-done-circle',
+        iconOutline: 'checkmark-done-circle-outline',
+      },
+      {
+        name: 'profil',
+        title: 'Profil',
+        route: '/(app)/(subbag-umum)/profil',
+        iconFocused: 'person-circle',
+        iconOutline: 'person-circle-outline',
+      },
+    ],
+    []
+  );
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        tabBarLabel: {
+          fontSize: 11,
+          fontWeight: '600',
+          marginTop: 4,
+          fontFamily: 'Rubik',
+        },
+        centerTabLabel: {
+          fontWeight: 'bold',
+          fontFamily: 'RubikBold',
+        },
+        tabBarItem: {
+          paddingVertical: 4,
+        },
+        topBarContainer: {
+          height: 64,
+          backgroundColor: theme.colors.surface,
+          borderBottomWidth: 1,
+          borderBottomColor: theme.colors.outline,
+          shadowColor: theme.colors.shadow,
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 8,
+          elevation: 4,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          paddingHorizontal: 24,
+        },
+        topBarLeft: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 12,
+        },
+        logo: {
+          width: 40,
+          height: 40,
+          resizeMode: 'contain',
+        },
+        appTitle: {
+          fontSize: 18,
+          fontWeight: '700',
+          fontFamily: 'RubikBold',
+          color: theme.colors.onSurface,
+        },
+        topBarNav: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 8,
+        },
+        topBarItem: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          paddingHorizontal: 20,
+          paddingVertical: 12,
+          borderRadius: 12,
+          gap: 8,
+          minWidth: 120,
+          justifyContent: 'center',
+        },
+        topBarItemActive: {
+          backgroundColor: theme.colors.primaryContainer,
+        },
+        topBarItemText: {
+          fontSize: 14,
+          fontWeight: '600',
+          fontFamily: 'Rubik',
+        },
+        webWrapper: {
+          flex: 1,
+        },
+      }),
+    [theme]
+  );
+
+  const isRouteActive = (route: string) => {
+    return pathname.includes(route);
+  };
+
+  const handleNavigation = (route: string) => {
+    router.push(route as never);
+  };
+
+  if (showTopBar) {
+    return (
+      <View style={styles.webWrapper}>
+        <View style={styles.topBarContainer}>
+          {/* Logo dan Nama Aplikasi */}
+          <View style={styles.topBarLeft}>
+            <Image
+              source={require('@/assets/images/logo-kabupaten-ogan-ilir.png')}
+              style={styles.logo}
+            />
+            <Text style={styles.appTitle}>Pelakor</Text>
+          </View>
+
+          {/* Navigation Items */}
+          <View style={styles.topBarNav}>
+            {navigationItems.map((item) => {
+              const isActive = isRouteActive(item.name);
+              return (
+                <Pressable
+                  key={item.name}
+                  style={[
+                    styles.topBarItem,
+                    isActive && styles.topBarItemActive,
+                  ]}
+                  onPress={() => handleNavigation(item.route)}
+                >
+                  <Ionicons
+                    name={
+                      isActive
+                        ? (item.iconFocused as never)
+                        : (item.iconOutline as never)
+                    }
+                    size={22}
+                    color={
+                      isActive
+                        ? theme.colors.primary
+                        : theme.colors.onSurfaceVariant
+                    }
+                  />
+                  <Text
+                    style={[
+                      styles.topBarItemText,
+                      {
+                        color: isActive
+                          ? theme.colors.primary
+                          : theme.colors.onSurfaceVariant,
+                      },
+                    ]}
+                  >
+                    {item.title}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+        <Tabs
+          screenOptions={{
+            headerShown: false,
+            tabBarStyle: { display: 'none' },
+          }}
+        >
+          <Tabs.Screen name="home" />
+          <Tabs.Screen name="tindak-lanjut" />
+          <Tabs.Screen name="profil" />
+          <Tabs.Screen
+            name="riwayat_tindak_lanjut"
+            options={{
+              href: null,
+            }}
+          />
+        </Tabs>
+      </View>
+    );
+  }
+
+  // Mode mobile - menggunakan bottom tabs seperti biasa
   return (
     <Tabs
       screenOptions={{
@@ -53,20 +216,39 @@ export default function SubbagUmumLayout() {
         headerShown: false,
         tabBarButton: HapticTab,
         tabBarStyle: {
-          ...styles.tabBar,
+          position: 'absolute',
+          left: 16,
+          right: 16,
+          bottom: 20,
+          borderRadius: 20,
+          paddingHorizontal: 8,
+          paddingTop: 8,
+          shadowColor: theme.colors.shadow,
+          shadowOffset: { width: 0, height: 8 },
+          shadowOpacity: 0.15,
+          shadowRadius: 20,
+          elevation: 15,
+          borderTopWidth: 0,
+          borderWidth: 1,
+          borderColor: theme.colors.outline,
+          backgroundColor: theme.colors.surface,
           paddingBottom: Platform.OS === 'ios' ? insets.bottom : 12,
           height: Platform.OS === 'ios' ? 85 + insets.bottom : 75,
         },
         tabBarLabelStyle: styles.tabBarLabel,
         tabBarItemStyle: styles.tabBarItem,
-      }}>
-      
+      }}
+    >
       <Tabs.Screen
         name="tindak-lanjut"
         options={{
           title: 'Tindak Lanjut',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'checkmark-done-circle' : 'checkmark-done-circle-outline'} size={26} color={color} />
+            <Ionicons
+              name={focused ? 'checkmark-done-circle' : 'checkmark-done-circle-outline'}
+              size={26}
+              color={color}
+            />
           ),
         }}
       />
@@ -75,7 +257,11 @@ export default function SubbagUmumLayout() {
         options={{
           title: 'Home',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'home' : 'home-outline'} size={26} color={color} />
+            <Ionicons
+              name={focused ? 'home' : 'home-outline'}
+              size={26}
+              color={color}
+            />
           ),
         }}
       />
@@ -84,16 +270,20 @@ export default function SubbagUmumLayout() {
         options={{
           title: 'Profil',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'person-circle' : 'person-circle-outline'} size={26} color={color} />
+            <Ionicons
+              name={focused ? 'person-circle' : 'person-circle-outline'}
+              size={26}
+              color={color}
+            />
           ),
         }}
       />
       <Tabs.Screen
-              name="riwayat_tindak_lanjut"
-              options={{
-                href: null,
-              }}
-            />
+        name="riwayat_tindak_lanjut"
+        options={{
+          href: null,
+        }}
+      />
     </Tabs>
   );
 }

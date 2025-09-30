@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { View, ScrollView, Text, StyleSheet, TouchableOpacity, Alert, Platform } from 'react-native';
 import {
     Portal,
     Modal,
@@ -86,6 +86,19 @@ export function TindakLanjutDialog({ visible, onDismiss, laporan, onSuccess }: T
         }
     };
 
+    const showAppAlert = (title: string, message: string, buttons?: any) => {
+        if (Platform.OS === 'web') {
+            const result = window.confirm(`${title}\n\n${message}`);
+            if (result && buttons && buttons[0] && buttons[0].onPress) {
+                buttons[0].onPress();
+            } else if (!result && buttons && buttons[1] && buttons[1].onPress) {
+                buttons[1].onPress();
+            }
+        } else {
+            Alert.alert(title, message, buttons);
+        }
+    };
+
     const getInitials = (name: string) => {
         return name
             .split(' ')
@@ -118,14 +131,14 @@ export function TindakLanjutDialog({ visible, onDismiss, laporan, onSuccess }: T
             }
         } catch (error) {
             console.error('Error picking document:', error);
-            Alert.alert('Error', 'Gagal memilih file');
+            showAppAlert('Error', 'Gagal memilih file');
         }
     };
 
     const pickCamera = async () => {
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
         if (status !== 'granted') {
-            Alert.alert('Izin ditolak', 'Akses kamera dibutuhkan untuk ambil foto.');
+            showAppAlert('Izin ditolak', 'Akses kamera dibutuhkan untuk ambil foto.');
             return;
         }
         const result = await ImagePicker.launchCameraAsync({
@@ -165,7 +178,7 @@ export function TindakLanjutDialog({ visible, onDismiss, laporan, onSuccess }: T
         if (!laporan) return;
 
         if (!catatan.trim()) {
-            Alert.alert('Validasi Error', 'Catatan tindak lanjut wajib diisi');
+            showAppAlert('Validasi Error', 'Catatan tindak lanjut wajib diisi');
             return;
         }
 
@@ -173,7 +186,7 @@ export function TindakLanjutDialog({ visible, onDismiss, laporan, onSuccess }: T
         try {
             const token = await AsyncStorage.getItem('userToken');
             if (!token) {
-                Alert.alert('Error', 'Autentikasi gagal. Silakan login kembali.');
+                showAppAlert('Error', 'Autentikasi gagal. Silakan login kembali.');
                 setLoading(false);
                 return;
             }
@@ -194,8 +207,7 @@ export function TindakLanjutDialog({ visible, onDismiss, laporan, onSuccess }: T
             const response = await fetch(`${API_URL}/api/tindaklanjut/${laporan.id_laporan}`, {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'multipart/form-data',
+                    'Authorization': `Bearer ${token}`
                 },
                 body: formData,
             });
@@ -207,7 +219,7 @@ export function TindakLanjutDialog({ visible, onDismiss, laporan, onSuccess }: T
 
             const statusLabel = statusOptions.find(s => s.value === statusTindakLanjut)?.label || 'Diupdate';
 
-            Alert.alert(
+            showAppAlert(
                 'Tindak Lanjut Berhasil! ✅',
                 `Status laporan telah diubah menjadi "${statusLabel}"`,
                 [
@@ -222,7 +234,7 @@ export function TindakLanjutDialog({ visible, onDismiss, laporan, onSuccess }: T
             );
         } catch (err: any) {
             console.error('Error tindak lanjut:', err);
-            Alert.alert('Error', err.message || 'Terjadi kesalahan saat menyimpan tindak lanjut');
+            showAppAlert('Error', err.message || 'Terjadi kesalahan saat menyimpan tindak lanjut');
         } finally {
             setLoading(false);
         }
@@ -250,7 +262,7 @@ export function TindakLanjutDialog({ visible, onDismiss, laporan, onSuccess }: T
                 </View>
 
                 {laporan && (
-                    <>
+                    <View style={{ flex: 1 }}>
                         {/* Laporan Summary */}
                         <Card style={styles.summaryCard} elevation={1}>
                             <Card.Content style={styles.summaryContent}>
@@ -505,7 +517,7 @@ export function TindakLanjutDialog({ visible, onDismiss, laporan, onSuccess }: T
                                 </View>
                             )}
                         </ScrollView>
-                    </>
+                    </View>
                 )}
             </Modal>
         </Portal>
@@ -519,6 +531,7 @@ const createStyles = (theme: any) => StyleSheet.create({
         borderRadius: 16,
         maxHeight: '90%',
         flex: 1,
+        overflow: 'auto',
     },
     modalHeader: {
         flexDirection: 'row',

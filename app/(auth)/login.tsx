@@ -1,12 +1,10 @@
 import { Platform } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
     Alert,
-    Dimensions,
     KeyboardAvoidingView,
     ScrollView,
     StyleSheet,
@@ -14,50 +12,8 @@ import {
 } from 'react-native';
 import { ActivityIndicator, Button, Card, Text, TextInput } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-const { width, height } = Dimensions.get('window');
-
-// Improved Storage abstraction with error handling
-const Storage = {
-    async setItem(key: string, value: string): Promise<void> {
-        try {
-            if (Platform.OS === 'web') {
-                localStorage.setItem(key, value);
-            } else {
-                await AsyncStorage.setItem(key, value);
-            }
-        } catch (error) {
-            console.error('Storage setItem error:', error);
-            throw error;
-        }
-    },
-
-    async getItem(key: string): Promise<string | null> {
-        try {
-            if (Platform.OS === 'web') {
-                return localStorage.getItem(key);
-            } else {
-                return await AsyncStorage.getItem(key);
-            }
-        } catch (error) {
-            console.error('Storage getItem error:', error);
-            return null;
-        }
-    },
-
-    async removeItem(key: string): Promise<void> {
-        try {
-            if (Platform.OS === 'web') {
-                localStorage.removeItem(key);
-            } else {
-                await AsyncStorage.removeItem(key);
-            }
-        } catch (error) {
-            console.error('Storage removeItem error:', error);
-            throw error;
-        }
-    }
-};
+import { Storage, apiLogin } from '@/utils/auth'; 
+import { useAppTheme } from '@/context/ThemeContext';
 
 // Enhanced cross-platform alert
 const showAlert = (title: string, message: string, onPress?: () => void) => {
@@ -77,52 +33,151 @@ const showAlert = (title: string, message: string, onPress?: () => void) => {
     }
 };
 
-// Enhanced API login function with timeout and better error handling
-const apiLogin = async (data: { identifier: string; password: string }): Promise<Response> => {
-    const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
-
-    if (!API_BASE_URL) {
-        throw new Error('API URL tidak dikonfigurasi. Periksa file .env');
-    }
-
-    console.log('Attempting login with URL:', `${API_BASE_URL}/api/auth/login`);
-
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
-
-    try {
-        const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-            },
-            body: JSON.stringify(data),
-            signal: controller.signal,
-        });
-
-        clearTimeout(timeoutId);
-        return response;
-    } catch (error) {
-        clearTimeout(timeoutId);
-
-        if (error instanceof Error) {
-            if (error.name === 'AbortError') {
-                throw new Error('Request timeout. Periksa koneksi internet dan server.');
-            }
-            throw error;
-        }
-        throw new Error('Network error occurred');
-    }
-};
-
 export default function LoginScreen() {
     const router = useRouter();
     const insets = useSafeAreaInsets();
+    const { theme } = useAppTheme();
     const [identifier, setIdentifier] = useState('');
     const [password, setPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
+
+    const styles = useMemo(() => StyleSheet.create({
+        container: {
+            flex: 1,
+        },
+        keyboardView: {
+            flex: 1,
+        },
+        scrollContent: {
+            flexGrow: 1,
+            paddingHorizontal: 24,
+            paddingTop: 60,
+        },
+        logoContainer: {
+            alignItems: 'center',
+            marginBottom: 48,
+        },
+        logoWrapper: {
+            width: 80,
+            height: 80,
+            borderRadius: 6,
+            backgroundColor: theme.colors.surface,
+            justifyContent: 'center',
+            alignItems: 'center',
+            marginBottom: 20,
+            shadowColor: theme.colors.shadow,
+            shadowOffset: {
+                width: 0,
+                height: 2,
+            },
+            shadowOpacity: 0.1,
+            shadowRadius: 6,
+            elevation: 4,
+        },
+        logo: {
+            width: 56,
+            height: 56,
+        },
+        logoTitle: {
+            fontSize: 28,
+            fontWeight: '600',
+            color: theme.colors.onSurface,
+            textAlign: 'center',
+            marginBottom: 4,
+            letterSpacing: 1,
+        },
+        logoSubtitle: {
+            fontSize: 14,
+            color: theme.colors.onSurfaceVariant,
+            textAlign: 'center',
+            fontWeight: '400',
+        },
+        loginCard: {
+            borderRadius: 6,
+            marginBottom: 32,
+            backgroundColor: theme.colors.surface,
+            shadowColor: theme.colors.shadow,
+            shadowOffset: {
+                width: 0,
+                height: 2,
+            },
+            shadowOpacity: 0.1,
+            shadowRadius: 6,
+        },
+        cardContent: {
+            paddingVertical: 32,
+            paddingHorizontal: 24,
+        },
+        welcomeSection: {
+            alignItems: 'center',
+            marginBottom: 32,
+        },
+        welcomeTitle: {
+            fontSize: 24,
+            fontWeight: '600',
+            color: theme.colors.onSurface,
+            marginBottom: 8,
+        },
+        welcomeSubtitle: {
+            fontSize: 14,
+            color: theme.colors.onSurfaceVariant,
+            textAlign: 'center',
+        },
+        formContainer: {
+            gap: 24,
+        },
+        inputGroup: {
+            gap: 8,
+        },
+        inputLabel: {
+            fontSize: 14,
+            color: theme.colors.onSurface,
+            fontWeight: '500',
+            marginLeft: 4,
+        },
+        input: {
+            backgroundColor: theme.colors.background,
+            borderRadius: 6,
+        },
+        inputContent: {
+            fontSize: 16,
+            paddingHorizontal: 16,
+        },
+        loginButton: {
+            borderRadius: 6,
+            marginTop: 8,
+        },
+        loginButtonContent: {
+            height: 48,
+        },
+        loginButtonLabel: {
+            fontSize: 16,
+            fontWeight: '600',
+            color: theme.colors.onPrimary,
+        },
+        loadingContainer: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginTop: 16,
+            gap: 10,
+        },
+        loadingText: {
+            fontSize: 14,
+            color: theme.colors.onSurfaceVariant,
+            fontStyle: 'italic',
+        },
+        footer: {
+            alignItems: 'center',
+            marginTop: 20,
+        },
+        footerText: {
+            fontSize: 12,
+            color: theme.colors.onSurfaceVariant,
+            textAlign: 'center',
+        },
+    }), [theme]);
 
     const handleLogin = async () => {
         // Basic input validation
@@ -244,7 +299,7 @@ export default function LoginScreen() {
 
     return (
         <LinearGradient
-            colors={['#fafafa', '#f4f4f5']}
+            colors={[theme.colors.background, theme.colors.background]}
             style={[styles.container, { paddingTop: insets.top }]}
         >
             <KeyboardAvoidingView
@@ -266,10 +321,10 @@ export default function LoginScreen() {
                             />
                         </View>
                         <Text style={styles.logoTitle}>
-                            PELAKOR
+                            PELAKOR OGAN ILIR
                         </Text>
                         <Text style={styles.logoSubtitle}>
-                            Kabupaten Ogan Ilir
+                            Pelayanan Laporan Online Terpadu
                         </Text>
                     </View>
 
@@ -301,13 +356,13 @@ export default function LoginScreen() {
                                         disabled={isLoading}
                                         placeholder="Masukkan NIP atau Email"
                                         underlineColor="transparent"
-                                        activeUnderlineColor="#6366f1"
+                                        activeUnderlineColor={theme.colors.primary}
                                         contentStyle={styles.inputContent}
                                         theme={{
                                             colors: {
-                                                onSurfaceVariant: '#9ca3af',
-                                                surfaceVariant: '#f9fafb',
-                                                onSurface: '#9ca3af'
+                                                onSurfaceVariant: theme.colors.onSurfaceVariant,
+                                                surfaceVariant: theme.colors.background,
+                                                onSurface: theme.colors.onSurfaceVariant
                                             }
                                         }}
                                     />
@@ -327,17 +382,17 @@ export default function LoginScreen() {
                                             <TextInput.Icon
                                                 icon={showPassword ? 'eye-off' : 'eye'}
                                                 onPress={() => setShowPassword(!showPassword)}
-                                                color={"#4185fa"}
+                                                color={theme.colors.primary}
                                             />
                                         }
                                         placeholder="Masukkan password"
                                         underlineColor="transparent"
-                                        activeUnderlineColor="#6366f1"
+                                        activeUnderlineColor={theme.colors.primary}
                                         contentStyle={styles.inputContent}
                                         theme={{
                                             colors: {
-                                                onSurfaceVariant: '#9ca3af',
-                                                surfaceVariant: '#f9fafb'
+                                                onSurfaceVariant: theme.colors.onSurfaceVariant,
+                                                surfaceVariant: theme.colors.background
                                             }
                                         }}
                                     />
@@ -349,15 +404,11 @@ export default function LoginScreen() {
                                     onPress={handleLogin}
                                     loading={isLoading}
                                     disabled={isLoading || !identifier.trim() || !password.trim()}
-                                    style={[
-                                        styles.loginButton,
-                                        (!identifier.trim() || !password.trim()) && !isLoading
-                                            ? styles.loginButtonDisabled
-                                            : null
-                                    ]}
+                                    style={styles.loginButton}
                                     contentStyle={styles.loginButtonContent}
                                     labelStyle={styles.loginButtonLabel}
-                                    buttonColor="#6366f1"
+                                    buttonColor={theme.colors.primary}
+                                    textColor={theme.colors.onPrimary}
                                     rippleColor="rgba(255,255,255,0.2)"
                                 >
                                     {isLoading ? 'Memproses...' : 'Masuk'}
@@ -366,7 +417,7 @@ export default function LoginScreen() {
                                 {/* Loading Indicator */}
                                 {isLoading && (
                                     <View style={styles.loadingContainer}>
-                                        <ActivityIndicator size="small" color="#6366f1" />
+                                        <ActivityIndicator size="small" color={theme.colors.primary} />
                                         <Text style={styles.loadingText}>
                                             Memverifikasi kredensial...
                                         </Text>
@@ -387,143 +438,3 @@ export default function LoginScreen() {
         </LinearGradient>
     );
 }
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-    keyboardView: {
-        flex: 1,
-    },
-    scrollContent: {
-        flexGrow: 1,
-        paddingHorizontal: 24,
-        paddingTop: 60,
-    },
-    logoContainer: {
-        alignItems: 'center',
-        marginBottom: 48,
-    },
-    logoWrapper: {
-        width: 80,
-        height: 80,
-        borderRadius: 6,
-        backgroundColor: 'white',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 20,
-        shadowColor: '#000',
-        shadowOffset: {
-            width: 0,
-            height: 2,
-        },
-        shadowOpacity: 0.1,
-        shadowRadius: 6,
-        elevation: 4,
-    },
-    logo: {
-        width: 56,
-        height: 56,
-    },
-    logoTitle: {
-        fontSize: 28,
-        fontWeight: '600',
-        color: '#1f2937',
-        textAlign: 'center',
-        marginBottom: 4,
-        letterSpacing: 1,
-    },
-    logoSubtitle: {
-        fontSize: 14,
-        color: '#6b7280',
-        textAlign: 'center',
-        fontWeight: '400',
-    },
-    loginCard: {
-        borderRadius: 6,
-        marginBottom: 32,
-        backgroundColor: 'white',
-        shadowColor: '#000',
-        shadowOffset: {
-            width: 0,
-            height: 2,
-        },
-        shadowOpacity: 0.1,
-        shadowRadius: 6,
-    },
-    cardContent: {
-        paddingVertical: 32,
-        paddingHorizontal: 24,
-    },
-    welcomeSection: {
-        alignItems: 'center',
-        marginBottom: 32,
-    },
-    welcomeTitle: {
-        fontSize: 24,
-        fontWeight: '600',
-        color: '#1f2937',
-        marginBottom: 8,
-    },
-    welcomeSubtitle: {
-        fontSize: 14,
-        color: '#6b7280',
-        textAlign: 'center',
-    },
-    formContainer: {
-        gap: 24,
-    },
-    inputGroup: {
-        gap: 8,
-    },
-    inputLabel: {
-        fontSize: 14,
-        color: '#374151',
-        fontWeight: '500',
-        marginLeft: 4,
-    },
-    input: {
-        backgroundColor: '#f9fafb',
-        borderRadius: 6,
-    },
-    inputContent: {
-        fontSize: 16,
-        paddingHorizontal: 16,
-    },
-    loginButton: {
-        borderRadius: 6,
-        marginTop: 8,
-    },
-    loginButtonDisabled: {
-        backgroundColor: '#9ca3af',
-    },
-    loginButtonContent: {
-        height: 48,
-    },
-    loginButtonLabel: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: 'white',
-    },
-    loadingContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginTop: 16,
-        gap: 10,
-    },
-    loadingText: {
-        fontSize: 14,
-        color: '#6b7280',
-        fontStyle: 'italic',
-    },
-    footer: {
-        alignItems: 'center',
-        marginTop: 20,
-    },
-    footerText: {
-        fontSize: 12,
-        color: '#9ca3af',
-        textAlign: 'center',
-    },
-});

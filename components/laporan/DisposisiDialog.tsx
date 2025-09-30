@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { View, ScrollView, Text, StyleSheet, TouchableOpacity, Alert, Platform } from 'react-native';
 import {
     Portal,
     Modal,
@@ -38,6 +38,21 @@ export function DisposisiDialog({ visible, onDismiss, laporan, subbagUsers, onSu
         }
     }, [visible]);
 
+    const showAppAlert = (title: string, message: string, buttons?: any) => {
+        if (Platform.OS === 'web') {
+            const result = window.confirm(`${title}
+
+${message}`);
+            if (result && buttons && buttons[0] && buttons[0].onPress) {
+                buttons[0].onPress();
+            } else if (!result && buttons && buttons[1] && buttons[1].onPress) {
+                buttons[1].onPress();
+            }
+        } else {
+            Alert.alert(title, message, buttons);
+        }
+    };
+
     const getInitials = (name: string) => {
         return name
             .split(' ')
@@ -62,12 +77,12 @@ export function DisposisiDialog({ visible, onDismiss, laporan, subbagUsers, onSu
         if (!laporan) return;
 
         if (isApproved && !selectedSubbag) {
-            Alert.alert('Validasi Error', 'Pilih penanggung jawab terlebih dahulu');
+            showAppAlert('Validasi Error', 'Pilih penanggung jawab terlebih dahulu');
             return;
         }
 
         if (!catatan.trim()) {
-            Alert.alert('Validasi Error', 'Catatan disposisi wajib diisi');
+            showAppAlert('Validasi Error', 'Catatan disposisi wajib diisi');
             return;
         }
 
@@ -75,14 +90,14 @@ export function DisposisiDialog({ visible, onDismiss, laporan, subbagUsers, onSu
         try {
             const disposisiData = {
                 nip_penanggung_jawab: isApproved ? selectedSubbag : undefined,
-                catatan_disposisi: catatan.trim(), 
+                catatan_disposisi: catatan.trim(),
                 valid: isApproved
             };
             console.log('Sending disposisiData:', disposisiData); // Added log
 
             await postDisposisi(String(laporan.id_laporan), disposisiData);
 
-            Alert.alert(
+            showAppAlert(
                 isApproved ? 'Laporan Didisposisikan! ✅' : 'Laporan Ditolak! ❌',
                 isApproved
                     ? `Laporan berhasil didisposisikan kepada ${subbagUsers.find(u => u.nip === selectedSubbag)?.jabatan}`
@@ -100,7 +115,7 @@ export function DisposisiDialog({ visible, onDismiss, laporan, subbagUsers, onSu
         } catch (error: any) {
             console.error('Error disposisi:', error);
             const errorMessage = error instanceof ApiError ? error.message : 'Terjadi kesalahan saat menyimpan disposisi';
-            Alert.alert('Error', errorMessage);
+            showAppAlert('Error', errorMessage);
         } finally {
             setDisposisiLoading(false);
         }
@@ -113,7 +128,7 @@ export function DisposisiDialog({ visible, onDismiss, laporan, subbagUsers, onSu
                 onDismiss={onDismiss}
                 contentContainerStyle={styles.modalContent}
             >
-                <ScrollView showsVerticalScrollIndicator={false}>
+                <View>
                     <Text style={styles.modalTitle}>Disposisi Laporan</Text>
 
                     {laporan && (
@@ -139,7 +154,7 @@ export function DisposisiDialog({ visible, onDismiss, laporan, subbagUsers, onSu
                                 <Text style={styles.inputHint}>
                                     Pilih Sub Bagian yang akan menangani laporan ini
                                 </Text>
-                                <ScrollView style={styles.subbagList} nestedScrollEnabled>
+                                <ScrollView style={styles.subbagList}>
                                     {subbagUsers.map((user) => (
                                         <TouchableOpacity
                                             key={user.nip}
@@ -224,7 +239,7 @@ export function DisposisiDialog({ visible, onDismiss, laporan, subbagUsers, onSu
                             </View>
                         </>
                     )}
-                </ScrollView>
+                </View>
             </Modal>
         </Portal>
     );
@@ -236,6 +251,7 @@ const createStyles = (theme: any) => StyleSheet.create({
         margin: 16,
         borderRadius: 16,
         maxHeight: '90%',
+        overflow: 'auto',
     },
     modalTitle: {
         fontSize: 20,

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback, useMemo, JSX } from 'react';
-import { StyleSheet, View, FlatList, RefreshControl, Alert } from 'react-native';
+import { StyleSheet, View, FlatList, RefreshControl, Alert, Platform } from 'react-native';
 import {
     ActivityIndicator,
     Button,
@@ -14,7 +14,7 @@ import {
     Surface,
 } from 'react-native-paper';
 import { useAppTheme } from '@/context/ThemeContext';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { format, parseISO } from 'date-fns';
 import { id } from 'date-fns/locale';
 
@@ -62,6 +62,14 @@ export default function RiwayatLaporanScreen(): JSX.Element {
         { value: 'selesai', label: 'Selesai', color: '#4CAF50' },
     ];
 
+    const showAppAlert = (title: string, message: string) => {
+        if (Platform.OS === 'web') {
+            alert(`${title}\n\n${message}`);
+        } else {
+            Alert.alert(title, message);
+        }
+    };
+
     const fetchLaporan = useCallback(async (): Promise<void> => {
         try {
             setLoading(true);
@@ -77,9 +85,11 @@ export default function RiwayatLaporanScreen(): JSX.Element {
         }
     }, []);
 
-    useEffect(() => {
-        fetchLaporan();
-    }, [fetchLaporan]);
+    useFocusEffect(
+        useCallback(() => {
+            fetchLaporan();
+        }, [fetchLaporan])
+    );
 
     const filteredData = useMemo(() => {
         let result = laporanList;
@@ -141,7 +151,7 @@ export default function RiwayatLaporanScreen(): JSX.Element {
 
     const openEdit = useCallback((laporan: Laporan) => {
         if (laporan.status_laporan !== 'diajukan') {
-            Alert.alert('Tidak Dapat Mengedit', 'Laporan hanya dapat diedit jika status masih "Diajukan".');
+            showAppAlert('Tidak Dapat Mengedit', 'Laporan hanya dapat diedit jika status masih "Diajukan".');
             return;
         }
         setDetailVisible(false);
@@ -191,31 +201,40 @@ export default function RiwayatLaporanScreen(): JSX.Element {
 
     const handleDelete = useCallback((laporan: Laporan) => {
         if (laporan.status_laporan !== 'diajukan') {
-            Alert.alert('Tidak Dapat Menghapus', 'Laporan hanya dapat dihapus jika status masih "Diajukan".');
+            showAppAlert('Tidak Dapat Menghapus', 'Laporan hanya dapat dihapus jika status masih "Diajukan".');
             return;
         }
-        Alert.alert(
-            'Konfirmasi Hapus',
-            `Apakah Anda yakin ingin menghapus laporan "${laporan.judul_laporan}"?`,
-            [
-                { text: 'Batal', style: 'cancel' },
-                {
-                    text: 'Hapus',
-                    style: 'destructive',
-                    onPress: async () => {
-                        try {
-                            await api.deleteLaporan(laporan.id_laporan.toString());
-                            setSnackbar({ visible: true, message: 'Laporan berhasil dihapus', type: 'success' });
-                            closeDetail();
-                            onRefresh();
-                        } catch (error) {
-                            const errorMessage = error instanceof api.ApiError ? error.message : 'Gagal menghapus laporan';
-                            setSnackbar({ visible: true, message: errorMessage, type: 'error' });
-                        }
+
+        const onConfirmDelete = async () => {
+            try {
+                await api.deleteLaporan(laporan.id_laporan.toString());
+                setSnackbar({ visible: true, message: 'Laporan berhasil dihapus', type: 'success' });
+                closeDetail();
+                onRefresh();
+            } catch (error) {
+                const errorMessage = error instanceof api.ApiError ? error.message : 'Gagal menghapus laporan';
+                setSnackbar({ visible: true, message: errorMessage, type: 'error' });
+            }
+        };
+
+        if (Platform.OS === 'web') {
+            if (confirm(`Apakah Anda yakin ingin menghapus laporan "${laporan.judul_laporan}"?`)) {
+                onConfirmDelete();
+            }
+        } else {
+            Alert.alert(
+                'Konfirmasi Hapus',
+                `Apakah Anda yakin ingin menghapus laporan "${laporan.judul_laporan}"?`,
+                [
+                    { text: 'Batal', style: 'cancel' },
+                    {
+                        text: 'Hapus',
+                        style: 'destructive',
+                        onPress: onConfirmDelete
                     }
-                }
-            ]
-        );
+                ]
+            );
+        }
     }, [closeDetail, onRefresh]);
 
     const renderLaporanItem = useCallback(({ item }: { item: Laporan }): JSX.Element => (

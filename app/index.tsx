@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, Image, Text } from 'react-native';
 import { useAppTheme } from '@/context/ThemeContext';
 
 export default function StartPage() {
@@ -57,6 +57,15 @@ export default function StartPage() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      <Image 
+        source={require('../assets/images/logo-kabupaten-ogan-ilir.png')}
+        style={styles.logo}
+      />
+      <Text style={[styles.title, { color: theme.colors.onBackground }]}>PELAKOR</Text>
+      <Text style={[styles.subtitle, { color: theme.colors.onSurfaceVariant }]}>
+        Pelaporan Aset dan Alat Kerja Kabupaten Ogan Ilir
+      </Text>
+      <Text style={[styles.subtitle, { color: theme.colors.onSurfaceVariant, marginBottom: 40 }]}>ASN Kabupaten Ogan Ilir</Text>
       <ActivityIndicator size="large" color={theme.colors.primary} />
     </View>
   );
@@ -67,5 +76,23 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  logo: {
+    width: 120,
+    height: 120,
+    resizeMode: 'contain',
+    marginBottom: 24,
+  },
+  title: {
+    fontSize: 32,
+    fontFamily: 'RubikBold',
+    letterSpacing: 2,
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 16,
+    fontFamily: 'Rubik',
+    textAlign: 'center',
+    paddingHorizontal: 40,
   },
 });
