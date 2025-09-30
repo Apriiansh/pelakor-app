@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, Text, StyleSheet, TouchableOpacity, Alert, Platform } from 'react-native';
+import { View, ScrollView, Text, StyleSheet, TouchableOpacity, Alert, Platform, ViewStyle, TextStyle } from 'react-native';
 import {
     Portal,
     Modal,
@@ -93,7 +92,7 @@ ${message}`);
                 catatan_disposisi: catatan.trim(),
                 valid: isApproved
             };
-            console.log('Sending disposisiData:', disposisiData); // Added log
+            console.log('Sending disposisiData:', disposisiData);
 
             await postDisposisi(String(laporan.id_laporan), disposisiData);
 
@@ -126,59 +125,59 @@ ${message}`);
             <Modal
                 visible={visible}
                 onDismiss={onDismiss}
-                contentContainerStyle={styles.modalContent}
+                contentContainerStyle={styles.modalContent as ViewStyle}
             >
                 <View>
-                    <Text style={styles.modalTitle}>Disposisi Laporan</Text>
+                    <Text style={styles.modalTitle as TextStyle}>Disposisi Laporan</Text>
 
                     {laporan && (
                         <>
                             {/* Laporan Summary */}
-                            <Card style={styles.summaryCard} elevation={1}>
-                                <Card.Content style={styles.summaryContent}>
-                                    <Text style={styles.summaryTitle} numberOfLines={2}>
+                            <Card style={styles.summaryCard as ViewStyle} elevation={1}>
+                                <Card.Content style={styles.summaryContent as ViewStyle}>
+                                    <Text style={styles.summaryTitle as TextStyle} numberOfLines={2}>
                                         {laporan.judul_laporan}
                                     </Text>
-                                    <Text style={styles.summaryPelapor}>
+                                    <Text style={styles.summaryPelapor as TextStyle}>
                                         Oleh: {laporan.pelapor}
                                     </Text>
-                                    <Text style={styles.summaryDate}>
+                                    <Text style={styles.summaryDate as TextStyle}>
                                         {formatDate(laporan.created_at)}
                                     </Text>
                                 </Card.Content>
                             </Card>
 
                             {/* Pilihan Subbag */}
-                            <View style={styles.inputGroup}>
-                                <Text style={styles.inputLabel}>Pilih Penanggung Jawab *</Text>
-                                <Text style={styles.inputHint}>
+                            <View style={styles.inputGroup as ViewStyle}>
+                                <Text style={styles.inputLabel as TextStyle}>Pilih Penanggung Jawab *</Text>
+                                <Text style={styles.inputHint as TextStyle}>
                                     Pilih Sub Bagian yang akan menangani laporan ini
                                 </Text>
-                                <ScrollView style={styles.subbagList}>
+                                <ScrollView style={styles.subbagList as ViewStyle}>
                                     {subbagUsers.map((user) => (
                                         <TouchableOpacity
                                             key={user.nip}
                                             style={[
-                                                styles.subbagItem,
-                                                selectedSubbag === user.nip && styles.subbagItemSelected
+                                                styles.subbagItem as ViewStyle,
+                                                selectedSubbag === user.nip && (styles.subbagItemSelected as ViewStyle)
                                             ]}
                                             onPress={() => setSelectedSubbag(user.nip)}
                                         >
-                                            <View style={styles.subbagItemContent}>
+                                            <View style={styles.subbagItemContent as ViewStyle}>
                                                 <Avatar.Text
                                                     size={36}
                                                     label={getInitials(user.nama)}
-                                                    style={styles.subbagAvatar}
-                                                    labelStyle={styles.subbagAvatarLabel}
+                                                    style={styles.subbagAvatar as ViewStyle}
+                                                    labelStyle={styles.subbagAvatarLabel as TextStyle}
                                                 />
-                                                <View style={styles.subbagDetails}>
+                                                <View style={styles.subbagDetails as ViewStyle}>
                                                     <Text style={[
-                                                        styles.subbagNama,
-                                                        selectedSubbag === user.nip && styles.subbagNamaSelected
+                                                        styles.subbagNama as TextStyle,
+                                                        selectedSubbag === user.nip && (styles.subbagNamaSelected as TextStyle)
                                                     ]}>
                                                         {user.nama}
                                                     </Text>
-                                                    <Text style={styles.nip}>NIP: {user.nip}</Text>
+                                                    <Text style={styles.subbagNip as TextStyle}>NIP: {user.nip}</Text>
                                                 </View>
                                             </View>
                                             {selectedSubbag === user.nip && (
@@ -194,8 +193,8 @@ ${message}`);
                             </View>
 
                             {/* Catatan */}
-                            <View style={styles.inputGroup}>
-                                <Text style={styles.inputLabel}>Catatan Disposisi *</Text>
+                            <View style={styles.inputGroup as ViewStyle}>
+                                <Text style={styles.inputLabel as TextStyle}>Catatan Disposisi *</Text>
                                 <TextInput
                                     value={catatan}
                                     onChangeText={setCatatan}
@@ -208,18 +207,18 @@ ${message}`);
                                     activeOutlineColor={theme.colors.primary}
                                     maxLength={300}
                                 />
-                                <Text style={styles.charCount}>{catatan.length}/300</Text>
+                                <Text style={styles.charCount as TextStyle}>{catatan.length}/300</Text>
                             </View>
 
                             {/* Action Buttons */}
-                            <View style={styles.modalActions}>
+                            <View style={styles.modalActions as ViewStyle}>
                                 <Button
                                     mode="outlined"
                                     onPress={() => handleDisposisi(false)}
                                     loading={disposisiLoading}
                                     disabled={disposisiLoading || !catatan.trim()}
-                                    style={[styles.actionButton, styles.rejectButton]}
-                                    contentStyle={styles.buttonContent}
+                                    style={[styles.actionButton as ViewStyle, styles.rejectButton as ViewStyle]}
+                                    contentStyle={styles.buttonContent as ViewStyle}
                                     buttonColor="transparent"
                                     textColor={theme.colors.error}
                                 >
@@ -230,8 +229,8 @@ ${message}`);
                                     onPress={() => handleDisposisi(true)}
                                     loading={disposisiLoading}
                                     disabled={disposisiLoading || !selectedSubbag || !catatan.trim()}
-                                    style={[styles.actionButton, styles.approveButton]}
-                                    contentStyle={styles.buttonContent}
+                                    style={[styles.actionButton as ViewStyle, styles.approveButton as ViewStyle]}
+                                    contentStyle={styles.buttonContent as ViewStyle}
                                     buttonColor={theme.colors.primary}
                                 >
                                     Disposisi
@@ -251,8 +250,7 @@ const createStyles = (theme: any) => StyleSheet.create({
         margin: 16,
         borderRadius: 16,
         maxHeight: '90%',
-        overflow: 'auto',
-    },
+    } as ViewStyle,
     modalTitle: {
         fontSize: 20,
         fontWeight: 'bold',
@@ -262,67 +260,67 @@ const createStyles = (theme: any) => StyleSheet.create({
         paddingHorizontal: 20,
         borderBottomWidth: 1,
         borderBottomColor: theme.colors.outline,
-    },
+    } as TextStyle,
     summaryCard: {
         backgroundColor: theme.colors.primaryContainer,
         borderRadius: 12,
         margin: 20,
         marginBottom: 16,
-    },
+    } as ViewStyle,
     summaryContent: {
         padding: 16,
-    },
+    } as ViewStyle,
     summaryTitle: {
         fontSize: 16,
         fontWeight: 'bold',
         color: theme.colors.onSurface,
         marginBottom: 8,
         lineHeight: 22,
-    },
+    } as TextStyle,
     summaryPelapor: {
         fontSize: 14,
         color: theme.colors.onSurfaceVariant,
         marginBottom: 4,
-    },
+    } as TextStyle,
     summaryDate: {
         fontSize: 12,
         color: theme.colors.onSurfaceVariant,
-    },
+    } as TextStyle,
     inputGroup: {
         marginBottom: 24,
         paddingHorizontal: 20,
-    },
+    } as ViewStyle,
     inputLabel: {
         fontSize: 16,
         fontWeight: '600',
         color: theme.colors.onSurface,
         marginBottom: 8,
-    },
+    } as TextStyle,
     inputHint: {
         fontSize: 12,
         color: theme.colors.onSurfaceVariant,
         marginBottom: 12,
-    },
+    } as TextStyle,
     textInput: {
         backgroundColor: theme.colors.surface,
         fontSize: 16,
-    },
+    } as TextStyle,
     textArea: {
         minHeight: 100,
-    },
+    } as TextStyle,
     charCount: {
         fontSize: 12,
         color: theme.colors.onSurfaceVariant,
         textAlign: 'right',
         marginTop: 4,
-    },
+    } as TextStyle,
     subbagList: {
         maxHeight: 200,
         borderWidth: 1,
         borderColor: theme.colors.outline,
         borderRadius: 8,
         backgroundColor: theme.colors.surface,
-    },
+    } as ViewStyle,
     subbagItem: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -331,39 +329,39 @@ const createStyles = (theme: any) => StyleSheet.create({
         paddingVertical: 12,
         borderBottomWidth: 1,
         borderBottomColor: theme.colors.surfaceVariant,
-    },
+    } as ViewStyle,
     subbagItemSelected: {
         backgroundColor: theme.colors.primaryContainer,
-    },
+    } as ViewStyle,
     subbagItemContent: {
         flexDirection: 'row',
         alignItems: 'center',
         flex: 1,
         gap: 12,
-    },
+    } as ViewStyle,
     subbagAvatar: {
         backgroundColor: theme.colors.secondary,
-    },
+    } as ViewStyle,
     subbagAvatarLabel: {
         fontSize: 12,
         fontWeight: 'bold',
-    },
+    } as TextStyle,
     subbagDetails: {
         flex: 1,
-    },
+    } as ViewStyle,
     subbagNama: {
         fontSize: 14,
         fontWeight: '500',
         color: theme.colors.onSurface,
-    },
+    } as TextStyle,
     subbagNamaSelected: {
         fontWeight: '600',
         color: theme.colors.primary,
-    },
+    } as TextStyle,
     subbagNip: {
         fontSize: 12,
         color: theme.colors.onSurfaceVariant,
-    },
+    } as TextStyle,
     modalActions: {
         flexDirection: 'row',
         gap: 12,
@@ -371,16 +369,16 @@ const createStyles = (theme: any) => StyleSheet.create({
         paddingVertical: 20,
         borderTopWidth: 1,
         borderTopColor: theme.colors.outline,
-    },
+    } as ViewStyle,
     actionButton: {
         flex: 1,
         borderRadius: 12,
-    },
+    } as ViewStyle,
     rejectButton: {
         borderColor: theme.colors.error,
-    },
-    approveButton: {},
+    } as ViewStyle,
+    approveButton: {} as ViewStyle,
     buttonContent: {
         paddingVertical: 6,
-    },
+    } as ViewStyle,
 });

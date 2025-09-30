@@ -80,8 +80,7 @@ export default function BuatLaporanScreen() {
         const result = await ImagePicker.launchCameraAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
             quality: 0.8,
-            allowsEditing: true,
-            aspect: [4, 3],
+            allowsEditing: true
         });
         if (!result.canceled) {
             setLampiran(result.assets[0]);

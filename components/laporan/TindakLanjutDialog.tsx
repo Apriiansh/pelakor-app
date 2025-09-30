@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, Text, StyleSheet, TouchableOpacity, Alert, Platform } from 'react-native';
+import { View, ScrollView, Text, StyleSheet, TouchableOpacity, Alert, Platform, ViewStyle, TextStyle } from 'react-native';
 import {
     Portal,
     Modal,
@@ -144,6 +144,7 @@ export function TindakLanjutDialog({ visible, onDismiss, laporan, onSuccess }: T
         const result = await ImagePicker.launchCameraAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
             quality: 0.8,
+            allowsEditing: true
         });
         if (!result.canceled && result.assets[0]) {
             setLampiran(result.assets[0]);
@@ -221,7 +222,7 @@ export function TindakLanjutDialog({ visible, onDismiss, laporan, onSuccess }: T
 
             showAppAlert(
                 'Tindak Lanjut Berhasil! ✅',
-                `Status laporan telah diubah menjadi "${statusLabel}"`,
+                `Status laporan telah diubah menjadi "${statusLabel}"`, // Corrected escaping for double quotes
                 [
                     {
                         text: 'OK',
@@ -319,7 +320,7 @@ export function TindakLanjutDialog({ visible, onDismiss, laporan, onSuccess }: T
                                         {statusOptions.map((option) => (
                                             <TouchableOpacity
                                                 key={option.value}
-                                                style={[
+                                                style={[ 
                                                     styles.radioOption,
                                                     statusTindakLanjut === option.value && styles.radioOptionSelected
                                                 ]}
@@ -337,7 +338,7 @@ export function TindakLanjutDialog({ visible, onDismiss, laporan, onSuccess }: T
                                                         iconColor={option.color}
                                                         style={styles.radioIcon}
                                                     />
-                                                    <Text style={[
+                                                    <Text style={[ 
                                                         styles.radioLabel,
                                                         statusTindakLanjut === option.value && styles.radioLabelSelected
                                                     ]}>
@@ -471,7 +472,7 @@ export function TindakLanjutDialog({ visible, onDismiss, laporan, onSuccess }: T
                                                             {(() => {
                                                                 const statusInfo = getStatusInfo(item.status_tindak_lanjut);
                                                                 return (
-                                                                    <View style={[
+                                                                    <View style={[ 
                                                                         styles.statusBadge,
                                                                         { backgroundColor: statusInfo.color + '20' }
                                                                     ]}>
@@ -481,7 +482,7 @@ export function TindakLanjutDialog({ visible, onDismiss, laporan, onSuccess }: T
                                                                             iconColor={statusInfo.color}
                                                                             style={styles.statusIcon}
                                                                         />
-                                                                        <Text style={[
+                                                                        <Text style={[ 
                                                                             styles.statusBadgeText,
                                                                             { color: statusInfo.color }
                                                                         ]}>
@@ -531,8 +532,7 @@ const createStyles = (theme: any) => StyleSheet.create({
         borderRadius: 16,
         maxHeight: '90%',
         flex: 1,
-        overflow: 'auto',
-    },
+    } as ViewStyle,
     modalHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -541,62 +541,62 @@ const createStyles = (theme: any) => StyleSheet.create({
         paddingVertical: 16,
         borderBottomWidth: 1,
         borderBottomColor: theme.colors.outline,
-    },
+    } as ViewStyle,
     modalTitle: {
         fontSize: 20,
         fontWeight: 'bold',
         color: theme.colors.onSurface,
-    },
+    } as TextStyle,
     closeButton: {
         margin: 0,
-    },
+    } as ViewStyle,
     summaryCard: {
         backgroundColor: theme.colors.primaryContainer,
         borderRadius: 12,
         margin: 20,
         marginBottom: 16,
-    },
+    } as ViewStyle,
     summaryContent: {
         padding: 16,
-    },
+    } as ViewStyle,
     summaryTitle: {
         fontSize: 16,
         fontWeight: 'bold',
         color: theme.colors.onSurface,
         marginBottom: 8,
         lineHeight: 22,
-    },
+    } as TextStyle,
     summaryPelapor: {
         fontSize: 14,
         color: theme.colors.onSurfaceVariant,
         marginBottom: 4,
-    },
+    } as TextStyle,
     summaryDate: {
         fontSize: 12,
         color: theme.colors.onSurfaceVariant,
-    },
+    } as TextStyle,
     disposisiNote: {
         marginTop: 12,
         padding: 8,
         backgroundColor: theme.colors.secondaryContainer,
         borderRadius: 8,
-    },
+    } as ViewStyle,
     disposisiLabel: {
         fontSize: 12,
         fontWeight: '600',
         color: theme.colors.onSecondaryContainer,
         marginBottom: 4,
-    },
+    } as TextStyle,
     disposisiText: {
         fontSize: 13,
         color: theme.colors.onSecondaryContainer,
         fontStyle: 'italic',
-    },
+    } as TextStyle,
     tabContainer: {
         flexDirection: 'row',
         marginHorizontal: 20,
         marginBottom: 16,
-    },
+    } as ViewStyle,
     tab: {
         flex: 1,
         paddingVertical: 12,
@@ -604,41 +604,41 @@ const createStyles = (theme: any) => StyleSheet.create({
         backgroundColor: theme.colors.surfaceVariant,
         borderRadius: 8,
         marginHorizontal: 2,
-    },
+    } as ViewStyle,
     activeTab: {
         backgroundColor: theme.colors.primary,
-    },
+    } as ViewStyle,
     tabText: {
         textAlign: 'center',
         fontSize: 14,
         fontWeight: '500',
         color: theme.colors.onSurfaceVariant,
-    },
+    } as TextStyle,
     activeTabText: {
         color: 'white',
         fontWeight: '600',
-    },
+    } as TextStyle,
     tabContent: {
         flex: 1,
         paddingHorizontal: 20,
-    },
+    } as ViewStyle,
     formContainer: {
         paddingBottom: 20,
-    },
+    } as ViewStyle,
     inputGroup: {
         marginBottom: 24,
-    },
+    } as ViewStyle,
     inputLabel: {
         fontSize: 16,
         fontWeight: '600',
         color: theme.colors.onSurface,
         marginBottom: 8,
-    },
+    } as TextStyle,
     inputHint: {
         fontSize: 12,
         color: theme.colors.onSurfaceVariant,
         marginBottom: 12,
-    },
+    } as TextStyle,
     radioOption: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -649,54 +649,54 @@ const createStyles = (theme: any) => StyleSheet.create({
         borderRadius: 8,
         marginBottom: 8,
         backgroundColor: theme.colors.surface,
-    },
+    } as ViewStyle,
     radioOptionSelected: {
         borderColor: theme.colors.primary,
         backgroundColor: theme.colors.primaryContainer + '40',
-    },
+    } as ViewStyle,
     radioContent: {
         flexDirection: 'row',
         alignItems: 'center',
         flex: 1,
         marginLeft: 8,
-    },
+    } as ViewStyle,
     radioIcon: {
         margin: 0,
         marginRight: 8,
-    },
+    } as ViewStyle,
     radioLabel: {
         fontSize: 14,
         color: theme.colors.onSurface,
         flex: 1,
-    },
+    } as TextStyle,
     radioLabelSelected: {
         fontWeight: '600',
         color: theme.colors.primary,
-    },
+    } as TextStyle,
     textInput: {
         backgroundColor: theme.colors.surface,
         fontSize: 16,
-    },
+    } as TextStyle,
     textArea: {
         minHeight: 100,
-    },
+    } as TextStyle,
     charCount: {
         fontSize: 12,
         color: theme.colors.onSurfaceVariant,
         textAlign: 'right',
         marginTop: 4,
-    },
+    } as TextStyle,
     attachmentOptions: {
         flexDirection: 'row',
         gap: 16,
         justifyContent: 'space-evenly',
         marginBottom: 16,
-    },
+    } as ViewStyle,
     attachmentButton: {
         alignItems: 'center',
         gap: 8,
         flex: 1,
-    },
+    } as ViewStyle,
     attachmentIconContainer: {
         borderRadius: 16,
         padding: 12,
@@ -704,12 +704,12 @@ const createStyles = (theme: any) => StyleSheet.create({
         borderColor: theme.colors.outline,
         alignItems: 'center',
         width: '100%',
-    },
+    } as ViewStyle,
     attachmentLabel: {
         fontSize: 12,
         fontWeight: '500',
         color: theme.colors.onSurfaceVariant,
-    },
+    } as TextStyle,
     filePreview: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -717,123 +717,123 @@ const createStyles = (theme: any) => StyleSheet.create({
         padding: 12,
         backgroundColor: theme.colors.surfaceVariant,
         borderRadius: 8,
-    },
+    } as ViewStyle,
     fileInfo: {
         flexDirection: 'row',
         alignItems: 'center',
         flex: 1,
-    },
+    } as ViewStyle,
     fileDetails: {
         flex: 1,
         marginLeft: 8,
-    },
+    } as ViewStyle,
     fileName: {
         fontSize: 14,
         fontWeight: '500',
         color: theme.colors.onSurface,
-    },
+    } as TextStyle,
     fileSize: {
         fontSize: 12,
         color: theme.colors.onSurfaceVariant,
-    },
+    } as TextStyle,
     submitButton: {
         borderRadius: 12,
         marginTop: 16,
-    },
+    } as ViewStyle,
     submitButtonContent: {
         paddingVertical: 8,
-    },
+    } as ViewStyle,
 
     // History Styles
     historyContainer: {
         paddingBottom: 20,
-    },
+    } as ViewStyle,
     historyLoading: {
         padding: 40,
         alignItems: 'center',
-    },
+    } as ViewStyle,
     loadingText: {
         fontSize: 14,
         color: theme.colors.onSurfaceVariant,
-    },
+    } as TextStyle,
     emptyHistory: {
         padding: 40,
         alignItems: 'center',
-    },
+    } as ViewStyle,
     emptyHistoryText: {
         fontSize: 14,
         color: theme.colors.onSurfaceVariant,
         textAlign: 'center',
         marginTop: 8,
-    },
+    } as TextStyle,
     historyItem: {
         paddingVertical: 16,
-    },
+    } as ViewStyle,
     historyHeader: {
         flexDirection: 'row',
         alignItems: 'flex-start',
         marginBottom: 12,
-    },
+    } as ViewStyle,
     historyAvatar: {
         backgroundColor: theme.colors.primary,
-    },
+    } as ViewStyle,
     historyInfo: {
         flex: 1,
         marginLeft: 12,
-    },
+    } as ViewStyle,
     historyPenindak: {
         fontSize: 14,
         fontWeight: '600',
         color: theme.colors.onSurface,
-    },
+    } as TextStyle,
     historyJabatan: {
         fontSize: 12,
         color: theme.colors.onSurfaceVariant,
         marginTop: 2,
-    },
+    } as TextStyle,
     historyDate: {
         fontSize: 11,
         color: theme.colors.onSurfaceVariant,
         marginTop: 4,
-    },
+    } as TextStyle,
     historyStatus: {
         marginLeft: 8,
-    },
+    } as ViewStyle,
     statusBadge: {
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: 8,
         paddingVertical: 4,
         borderRadius: 12,
-    },
+    } as ViewStyle,
     statusIcon: {
         margin: 0,
         marginRight: 4,
-    },
+    } as ViewStyle,
     statusBadgeText: {
         fontSize: 11,
         fontWeight: '600',
-    },
+    } as TextStyle,
     historyCatatan: {
         fontSize: 14,
         color: theme.colors.onSurface,
         lineHeight: 20,
         marginBottom: 8,
         paddingLeft: 48,
-    },
+    } as TextStyle,
     historyLampiran: {
         flexDirection: 'row',
         alignItems: 'center',
         paddingLeft: 48,
         marginTop: 4,
-    },
+    } as ViewStyle,
     lampiranText: {
         fontSize: 12,
         color: theme.colors.primary,
         fontWeight: '500',
-    },
+    } as TextStyle,
     historyDivider: {
         marginVertical: 8,
         backgroundColor: theme.colors.outline,
-    },
+    } as ViewStyle,
 });
