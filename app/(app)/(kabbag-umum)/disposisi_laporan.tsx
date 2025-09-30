@@ -136,13 +136,13 @@ export default function DisposisiScreen() {
             >
                 <View style={styles.headerContent}>
                     <View style={styles.headerTop}>
-                        <IconButton
+                        {/* <IconButton
                             icon="arrow-left"
                             size={24}
                             iconColor="white"
-                            onPress={() => router.back()}
+                            onPress={() => router.push('/(app)/(kabbag-umum)/home')}
                             style={styles.backButton}
-                        />
+                        /> */}
                         <Text style={styles.headerTitle}>Disposisi Laporan</Text>
                         <IconButton
                             icon="history"
