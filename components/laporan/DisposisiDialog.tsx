@@ -11,6 +11,8 @@ import {
 } from 'react-native-paper';
 import { Laporan, User, ApiError, postDisposisi } from '@/utils/api';
 import { useAppTheme } from '@/context/ThemeContext';
+import { Notification } from '@/components/Notification';
+import { useNotification } from '@/hooks/use-notification';
 
 interface DisposisiDialogProps {
     visible: boolean;
@@ -23,10 +25,12 @@ interface DisposisiDialogProps {
 export function DisposisiDialog({ visible, onDismiss, laporan, subbagUsers, onSuccess }: DisposisiDialogProps) {
     const { theme } = useAppTheme();
     const styles = createStyles(theme);
+    const { notification, showSuccess, showError, hideNotification } = useNotification();
 
     const [selectedSubbag, setSelectedSubbag] = useState('');
     const [catatan, setCatatan] = useState('');
     const [disposisiLoading, setDisposisiLoading] = useState(false);
+    
 
     useEffect(() => {
         if (!visible) {
@@ -36,21 +40,6 @@ export function DisposisiDialog({ visible, onDismiss, laporan, subbagUsers, onSu
             setDisposisiLoading(false);
         }
     }, [visible]);
-
-    const showAppAlert = (title: string, message: string, buttons?: any) => {
-        if (Platform.OS === 'web') {
-            const result = window.confirm(`${title}
-
-${message}`);
-            if (result && buttons && buttons[0] && buttons[0].onPress) {
-                buttons[0].onPress();
-            } else if (!result && buttons && buttons[1] && buttons[1].onPress) {
-                buttons[1].onPress();
-            }
-        } else {
-            Alert.alert(title, message, buttons);
-        }
-    };
 
     const getInitials = (name: string) => {
         return name
@@ -76,12 +65,12 @@ ${message}`);
         if (!laporan) return;
 
         if (isApproved && !selectedSubbag) {
-            showAppAlert('Validasi Error', 'Pilih penanggung jawab terlebih dahulu');
+            showError('Pilih penanggung jawab terlebih dahulu');
             return;
         }
 
         if (!catatan.trim()) {
-            showAppAlert('Validasi Error', 'Catatan disposisi wajib diisi');
+            showError('Catatan disposisi wajib diisi');
             return;
         }
 
@@ -96,25 +85,22 @@ ${message}`);
 
             await postDisposisi(String(laporan.id_laporan), disposisiData);
 
-            showAppAlert(
-                isApproved ? 'Laporan Didisposisikan! ✅' : 'Laporan Ditolak! ❌',
-                isApproved
-                    ? `Laporan berhasil didisposisikan kepada ${subbagUsers.find(u => u.nip === selectedSubbag)?.jabatan}`
-                    : 'Laporan telah ditolak dengan alasan yang diberikan',
-                [
-                    {
-                        text: 'OK',
-                        onPress: () => {
-                            onDismiss();
-                            onSuccess();
-                        }
-                    }
-                ]
-            );
+            if (isApproved) {
+                const userName = subbagUsers.find(u => u.nip === selectedSubbag)?.nama;
+                showSuccess(`Laporan berhasil didisposisikan kepada ${userName}`);
+            } else {
+                showSuccess('Laporan berhasil ditolak');
+            }
+
+            setTimeout(() => {
+                onDismiss();
+                onSuccess();
+            }, 1500);
+
         } catch (error: any) {
             console.error('Error disposisi:', error);
             const errorMessage = error instanceof ApiError ? error.message : 'Terjadi kesalahan saat menyimpan disposisi';
-            showAppAlert('Error', errorMessage);
+            showError(errorMessage); 
         } finally {
             setDisposisiLoading(false);
         }
@@ -240,6 +226,13 @@ ${message}`);
                     )}
                 </View>
             </Modal>
+            <Notification
+                visible={notification.visible}
+                message={notification.message}
+                type={notification.type}
+                onDismiss={hideNotification}
+                duration={4000}
+            />
         </Portal>
     );
 }

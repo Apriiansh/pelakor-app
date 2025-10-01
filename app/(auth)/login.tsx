@@ -4,7 +4,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useState, useMemo } from 'react';
 import {
-    Alert,
     KeyboardAvoidingView,
     ScrollView,
     StyleSheet,
@@ -12,31 +11,17 @@ import {
 } from 'react-native';
 import { ActivityIndicator, Button, Card, Text, TextInput } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Storage, apiLogin } from '@/utils/auth'; 
+import { Storage, apiLogin } from '@/utils/auth';
 import { useAppTheme } from '@/context/ThemeContext';
-
-// Enhanced cross-platform alert
-const showAlert = (title: string, message: string, onPress?: () => void) => {
-    if (Platform.OS === 'web') {
-        const confirmed = window.confirm(`${title}\n\n${message}`);
-        if (confirmed && onPress) {
-            onPress();
-        }
-    } else {
-        Alert.alert(title, message, [
-            {
-                text: onPress ? 'Lanjutkan' : 'OK',
-                style: 'default',
-                onPress
-            }
-        ]);
-    }
-};
+import { Notification } from '@/components/Notification';
+import { useNotification } from '@/hooks/use-notification';
 
 export default function LoginScreen() {
     const router = useRouter();
     const insets = useSafeAreaInsets();
     const { theme } = useAppTheme();
+    const { notification, showSuccess, showError, hideNotification } = useNotification();
+
     const [identifier, setIdentifier] = useState('');
     const [password, setPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -182,10 +167,7 @@ export default function LoginScreen() {
     const handleLogin = async () => {
         // Basic input validation
         if (!identifier.trim() || !password.trim()) {
-            showAlert(
-                'Input Tidak Valid',
-                'NIP/Email dan password wajib diisi.'
-            );
+            showError('NIP/Email dan password wajib diisi.');
             return;
         }
 
@@ -251,26 +233,21 @@ export default function LoginScreen() {
 
                 console.log('Navigating to route:', route);
 
-                showAlert(
-                    'Login Berhasil',
-                    `Selamat datang, ${data.user?.nama || 'User'}! Anda masuk sebagai ${jabatan || role}`,
-                    () => {
-                        setTimeout(() => {
-                            try {
-                                router.replace(route as any);
-                            } catch (routeError) {
-                                console.error('Route error:', routeError);
-                                router.replace('/(app)/(pelapor)/home' as any);
-                            }
-                        }, 100);
+                // Show success notification
+                showSuccess(`Selamat datang, ${data.user?.nama || 'User'}! Anda masuk sebagai ${jabatan || role}`);
+
+                // Navigate after a short delay
+                setTimeout(() => {
+                    try {
+                        router.replace(route as any);
+                    } catch (routeError) {
+                        console.error('Route error:', routeError);
+                        router.replace('/(app)/(pelapor)/home' as any);
                     }
-                );
+                }, 1500);
             } else {
                 console.log('Login failed - invalid response:', data);
-                showAlert(
-                    'Login Gagal',
-                    data.message || 'Login tidak berhasil. Silakan coba lagi.'
-                );
+                showError(data.message || 'Login tidak berhasil. Silakan coba lagi.');
             }
         } catch (error: any) {
             console.error('Login error details:', {
@@ -291,7 +268,7 @@ export default function LoginScreen() {
                 errorMessage = error.message;
             }
 
-            showAlert('Error Koneksi', errorMessage);
+            showError(errorMessage);
         } finally {
             setIsLoading(false);
         }
@@ -435,6 +412,15 @@ export default function LoginScreen() {
                     </View>
                 </ScrollView>
             </KeyboardAvoidingView>
+
+            {/* Notification Component */}
+            <Notification
+                visible={notification.visible}
+                message={notification.message}
+                type={notification.type}
+                onDismiss={hideNotification}
+                duration={4000}
+            />
         </LinearGradient>
     );
 }

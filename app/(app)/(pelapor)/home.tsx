@@ -25,9 +25,9 @@ const initialStats: Stats = {
 
 const quickActions = [
     { title: 'Laporan Baru', icon: 'plus-circle', colorType: 'primary', action: 'create' },
-    { title: 'Konsumsi', icon: 'food-apple', colorType: 'green', action: 'template', template: { title: 'Laporan Konsumsi', category: 'Konsumsi' } },
-    { title: 'Kebutuhan', icon: 'shopping', colorType: 'secondary', action: 'template', template: { title: 'Laporan Kebutuhan', category: 'Kebutuhan' } },
-    { title: 'Kerusakan', icon: 'wrench', colorType: 'error', action: 'template', template: { title: 'Laporan Kerusakan', category: 'Kerusakan' } },
+    { title: 'Konsumsi', icon: 'food-apple', colorType: 'green', action: 'template', template: { title: 'Laporan Konsumsi', category: 'konsumsi' } },
+    { title: 'Kebutuhan', icon: 'shopping', colorType: 'secondary', action: 'template', template: { title: 'Laporan Kebutuhan', category: 'kebutuhan' } },
+    { title: 'Kerusakan', icon: 'wrench', colorType: 'error', action: 'template', template: { title: 'Laporan Kerusakan', category: 'kerusakan' } },
 ];
 
 export default function PelaporHomeScreen() {
@@ -118,32 +118,13 @@ export default function PelaporHomeScreen() {
             case 'error': return theme.colors.error;
             case 'warning': return theme.colors.warning;
             case 'success': return theme.colors.success;
-            case 'blue': return theme.colors.blueLight;
+            case 'blue': return theme.colors.primary;
             case 'orange': return theme.colors.warning;
-            case 'amber': return theme.colors.amberLight;
+            case 'amber': return theme.colors.warning;
             default: return theme.colors.primary;
         }
     };
 
-    const getBackgroundByType = (colorType: string) => {
-        switch (colorType) {
-            case 'blue': return theme.colors.blueLight;
-            case 'amber': return theme.colors.amberLight;
-            case 'green': return theme.colors.greenLight;
-            case 'orange': return theme.colors.warning;
-            case 'error': return theme.colors.error;
-            default: return theme.colors.primaryLight + '20';
-        }
-    };
-
-    const getStatIconColor = (statType: string) => {
-        if (statType === 'error') {
-            return theme.colors.error;
-        }
-        return theme.colors.onSurface;
-    };
-
-    // IMPROVEMENT: Gunakan useCallback untuk optimasi performa
     const handleQuickActionPress = useCallback((action: typeof quickActions[0]) => {
         if (action.action === 'create') {
             router.push('/(app)/(pelapor)/buat-laporan');
@@ -157,17 +138,14 @@ export default function PelaporHomeScreen() {
 
     // --- RENDER FUNCTIONS ---
     const renderStatCard = (name: string, value: number, icon: string, type: string) => {
-        const backgroundColor = getBackgroundByType(type);
-        const iconColor = getStatIconColor(type);
+        const iconColor = getColorByType(type);
 
         return (
-            <Card key={name} style={[styles.statCard, { backgroundColor }]} elevation={2}>
+            <Card key={name} style={styles.statCard} elevation={2}>
                 <Card.Content style={styles.statCardContent}>
-                    <View style={styles.statCardHeader}>
-                        <IconButton icon={icon} size={28} iconColor={iconColor as string} style={styles.statIcon} />
-                    </View>
-                    <Text style={[styles.statValue, { color: theme.colors.onSurface }]}>{value}</Text>
-                    <Text style={[styles.statName, { color: theme.colors.onSurfaceVariant }]}>{name}</Text>
+                    <IconButton icon={icon} size={28} iconColor={iconColor as string} style={styles.statIcon} />
+                    <Text style={styles.statValue}>{value}</Text>
+                    <Text style={styles.statName}>{name}</Text>
                 </Card.Content>
             </Card>
         );
@@ -178,7 +156,7 @@ export default function PelaporHomeScreen() {
         const backgroundColor = theme.colors.primaryLight + '20';
 
         return (
-            <TouchableOpacity key={action.title} onPress={() => handleQuickActionPress(action)}>
+            <TouchableOpacity key={action.title} onPress={() => handleQuickActionPress(action)} style={styles.quickActionContainer}>
                 <Card style={[styles.quickActionCard, { backgroundColor: theme.colors.surface }]} elevation={1}>
                     <Card.Content style={styles.quickActionContent}>
                         <View style={[styles.quickActionIcon, { backgroundColor }]}>
@@ -229,8 +207,6 @@ export default function PelaporHomeScreen() {
         );
     };
 
-    // --- STYLES ---
-    // IMPROVEMENT: Styles di-generate sekali dan menggunakan theme
     const styles = StyleSheet.create({
         container: { flex: 1, backgroundColor: theme.colors.background },
         contentContainer: { paddingBottom: 100 },
@@ -248,19 +224,30 @@ export default function PelaporHomeScreen() {
         dateText: { fontSize: 14, color: 'rgba(255, 255, 255, 0.9)', textAlign: 'center', fontFamily: 'Rubik' },
         quickActionsSection: { paddingHorizontal: 20, paddingTop: 24 },
         sectionTitle: { fontSize: 18, color: theme.colors.onSurface, marginBottom: 16, fontFamily: 'RubikBold' },
-        quickActionsGrid: { flexDirection: 'row', gap: 5 },
-        quickActionCard: { flex: 1, borderRadius: 12 },
+        quickActionsGrid: {
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            gap: 12,
+            justifyContent: 'center',
+        },
+        quickActionContainer: {
+            flexGrow: 1,
+            flexBasis: 120,
+            maxWidth: 160,
+        },
+        quickActionCard: {
+            borderRadius: 12,
+        },
         quickActionContent: { alignItems: 'center', padding: 16, gap: 8 },
         quickActionIcon: { borderRadius: 24, width: 48, height: 48, alignItems: 'center', justifyContent: 'center' },
         quickActionText: { fontSize: 12, textAlign: 'center', fontFamily: 'RubikBold' },
         statsSection: { paddingHorizontal: 20, paddingTop: 32 },
         statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-        statCard: { width: (width - 52) / 2, borderRadius: 16 },
-        statCardContent: { padding: 16 },
-        statCardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
-        statIcon: { margin: 0 },
-        statValue: { fontSize: 28, marginBottom: 4, fontFamily: 'RubikBold' },
-        statName: { fontSize: 13, fontFamily: 'Rubik' },
+        statCard: { width: (width - 52) / 2, borderRadius: 16, backgroundColor: theme.colors.surface },
+        statCardContent: { padding: 16, alignItems: 'center', justifyContent: 'center' },
+        statIcon: { margin: 0, marginBottom: 8 },
+        statValue: { fontSize: 28, marginBottom: 4, fontFamily: 'RubikBold', color: theme.colors.onSurface },
+        statName: { fontSize: 13, fontFamily: 'Rubik', color: theme.colors.onSurfaceVariant },
         recentSection: { paddingHorizontal: 20, paddingTop: 32 },
         recentHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
         viewAllText: { fontSize: 14, color: theme.colors.primary, fontFamily: 'RubikBold' },

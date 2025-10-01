@@ -13,6 +13,11 @@ import {
 } from 'react-native-paper';
 import { useAppTheme } from '@/context/ThemeContext';
 import { getFileUrl, type Laporan, type DisposisiHistory, type TindakLanjutHistory } from '@/utils/api';
+import { Notification } from '@/components/Notification';
+import { useNotification } from '@/hooks/use-notification';
+
+
+const { notification, showSuccess, showError, hideNotification } = useNotification();
 
 // Helper untuk memeriksa jenis lampiran dari URL
 const getAttachmentInfo = (url: string): { type: 'image' | 'pdf' | 'document', extension: string } => {
@@ -36,11 +41,12 @@ const handleOpenAttachment = async (url: string | null) => {
         const supported = await Linking.canOpenURL(url);
         if (supported) {
             await Linking.openURL(url);
+            showSuccess('Berhasil membuka lampiran.');
         } else {
-            Alert.alert('Error', `Tidak dapat membuka URL: ${url}`);
+            showError(`Tidak dapat membuka URL: ${url}`);
         }
     } catch (error) {
-        Alert.alert('Error', 'Gagal membuka lampiran.');
+        showError('Gagal membuka lampiran.');
     }
 };
 
@@ -292,6 +298,13 @@ export const DetailDisposisiDialog = ({
                     </Button>
                 </Dialog.Actions>
             </Dialog>
+            <Notification
+                visible={notification.visible}
+                message={notification.message}
+                type={notification.type}
+                onDismiss={hideNotification}
+                duration={3000}
+            />
         </Portal>
     );
 };

@@ -21,6 +21,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useAppTheme } from '@/context/ThemeContext';
 import { getTindakLanjut, Laporan, ApiError } from '@/utils/api';
 import { TindakLanjutDialog } from '@/components/laporan/TindakLanjutDialog';
+import { Notification } from '@/components/Notification';
+import { useNotification } from '@/hooks/use-notification';
 
 interface TindakLanjutLaporan extends Laporan {
     catatan_disposisi?: string;
@@ -40,6 +42,8 @@ export default function TindakLanjutScreen() {
     // Modal state
     const [showTindakLanjutModal, setShowTindakLanjutModal] = useState(false);
     const [selectedLaporan, setSelectedLaporan] = useState<TindakLanjutLaporan | null>(null);
+
+    const { notification, showSuccess, showError, hideNotification } = useNotification();
 
     const categories = {
         konsumsi: { label: 'Makan & Minum', icon: 'food', color: theme.colors.secondary },
@@ -66,7 +70,7 @@ export default function TindakLanjutScreen() {
         } catch (error) {
             console.error('Error loading data:', error);
             const errorMessage = error instanceof ApiError ? error.message : 'Gagal memuat data';
-            Alert.alert('Error', errorMessage);
+            showError(errorMessage);
         } finally {
             setLoading(false);
         }

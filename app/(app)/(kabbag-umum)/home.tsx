@@ -17,7 +17,7 @@ const initialStats: LaporanStats = {
 const initialSelectedDeptData = { diajukan: 0, diproses: 0, ditolak: 0, ditindaklanjuti: 0, selesai: 0 };
 
 export default function HomeKabbagUmum() {
-  const [user, setUser] = useState<{ nama: string; role: string } | null>(null);
+  const [user, setUser] = useState<{ nama: string; role: string; unit_kerja?: string } | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -31,53 +31,64 @@ export default function HomeKabbagUmum() {
   const { theme } = useAppTheme();
   const router = useRouter();
 
-  useEffect(() => {
-    loadUserData();
-    fetchDashboardData();
-
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 60000);
-
-    return () => clearInterval(timer);
-  }, []);
-  
-  const loadUserData = async () => {
+  const loadUserData = useCallback(async () => {
     try {
       const userData = await AsyncStorage.getItem('userData');
       if (userData) {
         const parsed = JSON.parse(userData);
-        setUser({ nama: parsed.nama, role: 'Kepala Bagian Umum' });
+        setUser({
+          nama: parsed.nama,
+          role: 'Kepala Bagian Umum',
+          unit_kerja: parsed.unit_kerja,
+        });
       }
     } catch (error) {
       console.error('Error loading user data:', error);
     }
-  };
+  }, []);
 
   const fetchDashboardData = useCallback(async () => {
+    if (!user) return;
     setLoading(true);
     try {
       const [statsData, diajukanData] = await Promise.all([
         getLaporanStats(),
-        getLaporanDiajukan()
+        getLaporanDiajukan(),
       ]);
 
       setReportStats(statsData);
       setLaporanDiajukan(diajukanData);
 
-      // Set default selected department to the first one from stats
-      const firstDept = Object.keys(statsData)[0];
-      if (firstDept) {
-        setSelectedDepartment(firstDept);
-      }
+      const departments = Object.keys(statsData);
+      const userDepartment = user.unit_kerja;
 
+      if (userDepartment && departments.includes(userDepartment)) {
+        setSelectedDepartment(userDepartment);
+      } else if (departments.length > 0) {
+        setSelectedDepartment(departments[0]);
+      }
     } catch (error) {
-      console.error("Failed to fetch dashboard data:", error instanceof ApiError ? error.message : error);
+      console.error(
+        'Failed to fetch dashboard data:',
+        error instanceof ApiError ? error.message : error
+      );
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user]);
 
+  useEffect(() => {
+    loadUserData();
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 60000);
+    return () => clearInterval(timer);
+  }, [loadUserData]);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, [user, fetchDashboardData]);
+  
   const getGreeting = () => {
     const hour = currentTime.getHours();
     if (hour < 12) return 'Selamat Pagi';
@@ -242,25 +253,28 @@ export default function HomeKabbagUmum() {
     statContent: {
       alignItems: 'center',
       justifyContent: 'center',
-      paddingVertical: 18,
+      padding: 16,
+    },
+    statIcon: {
+        margin: 0,
+        marginBottom: 8,
     },
     statLabel: {
-      fontSize: 14,
+      fontSize: 13,
       color: theme.colors.onSurfaceVariant,
-      fontWeight: '500',
-      marginBottom: 4,
       fontFamily: 'Rubik',
     },
     statValue: {
-      fontSize: 32,
+      fontSize: 28,
       fontWeight: 'bold',
       color: theme.colors.onSurface,
       fontFamily: 'RubikBold',
+      marginBottom: 4,
     },
 
     // Chart Section
     chartSection: {
-      paddingHorizontal: 20,
+      paddingHorizontal: 18,
       paddingTop: 32,
     },
     chartHeader: {
@@ -431,14 +445,16 @@ export default function HomeKabbagUmum() {
         <View style={styles.statsRow}>
           <Card style={styles.statCard} elevation={2}>
             <Card.Content style={styles.statContent}>
-              <Text style={styles.statLabel}>Total Laporan</Text>
-              <Text style={styles.statValue}>{totalReports}</Text>
+                <IconButton icon="file-multiple" size={28} iconColor={theme.colors.primary} style={styles.statIcon} />
+                <Text style={styles.statValue}>{totalReports}</Text>
+                <Text style={styles.statLabel}>Total Laporan</Text>
             </Card.Content>
           </Card>
           <Card style={styles.statCard} elevation={2}>
             <Card.Content style={styles.statContent}>
-              <Text style={styles.statLabel}>Total Unit Kerja</Text>
-              <Text style={styles.statValue}>{departments.length}</Text>
+                <IconButton icon="domain" size={28} iconColor={theme.colors.secondary} style={styles.statIcon} />
+                <Text style={styles.statValue}>{departments.length}</Text>
+                <Text style={styles.statLabel}>Total Unit Kerja</Text>
             </Card.Content>
           </Card>
         </View>
@@ -457,7 +473,7 @@ export default function HomeKabbagUmum() {
                   icon={menuVisible ? "filter-variant-remove" : "filter-variant"}
                   size={24}
                   iconColor={theme.colors.primary}
-                  style={[styles.departmentSelectorButton, { borderColor: menuVisible ? theme.colors.primary : theme.colors.outline }]}
+                  style={[styles.departmentSelectorButton, { borderColor: menuVisible ? theme.colors.primary : theme.colors.outline }]} 
                   onPress={() => setMenuVisible(!menuVisible)}
                 />
               }
@@ -507,29 +523,23 @@ export default function HomeKabbagUmum() {
         ) : (
           <Card style={styles.chartCard} elevation={3}>
             <View style={styles.chartContainer}>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ paddingHorizontal: 10 }}
-              >
-                <BarChart
-                  data={chartData}
-                  width={Math.max(width - 60, 350)}
-                  height={260}
-                  yAxisLabel=""
-                  yAxisSuffix=""
-                  chartConfig={chartConfig}
-                  fromZero
-                  showValuesOnTopOfBars
-                  verticalLabelRotation={0}
-                  style={{
-                    marginVertical: 8,
-                    borderRadius: 16,
-                  }}
-                  yAxisInterval={1}
-                  segments={4}
-                />
-              </ScrollView>
+              <BarChart
+                data={chartData}
+                width={width - 36}
+                height={260}
+                yAxisLabel=""
+                yAxisSuffix=""
+                chartConfig={chartConfig}
+                fromZero
+                showValuesOnTopOfBars
+                verticalLabelRotation={0}
+                style={{
+                  marginVertical: 8,
+                  borderRadius: 16,
+                }}
+                yAxisInterval={1}
+                segments={4}
+              />
             </View>
           </Card>
         )}
@@ -568,8 +578,8 @@ export default function HomeKabbagUmum() {
                 />
               </TouchableOpacity>
             </Card>
-          ))
-          )}
+          )))
+          }
         </View>
       </View>
     </ScrollView>

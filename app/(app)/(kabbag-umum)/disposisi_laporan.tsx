@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import {
     View,
@@ -22,6 +21,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useAppTheme } from '@/context/ThemeContext';
 import { getLaporanDiajukan, getSubbagUmum, Laporan, User, ApiError } from '@/utils/api';
 import { DisposisiDialog } from '@/components/laporan/DisposisiDialog';
+import { Notification } from '@/components/Notification';
+import { useNotification } from '@/hooks/use-notification';
 
 export default function DisposisiScreen() {
     const router = useRouter();
@@ -32,6 +33,7 @@ export default function DisposisiScreen() {
     const [subbagUsers, setSubbagUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const { notification, showSuccess, showError, hideNotification } = useNotification();
 
     // Modal state
     const [showDisposisiModal, setShowDisposisiModal] = useState(false);
@@ -68,7 +70,7 @@ export default function DisposisiScreen() {
         } catch (error) {
             console.error('Error loading data:', error);
             const errorMessage = error instanceof ApiError ? error.message : 'Gagal memuat data';
-            showAppAlert('Error', errorMessage);
+            showError(errorMessage);
         } finally {
             setLoading(false);
         }
@@ -81,7 +83,7 @@ export default function DisposisiScreen() {
         } catch (error) {
             console.error('Error loading laporan:', error);
             const errorMessage = error instanceof ApiError ? error.message : 'Gagal memuat laporan';
-            showAppAlert('Error', errorMessage);
+            showError(errorMessage);
         }
     };
 
@@ -145,13 +147,13 @@ export default function DisposisiScreen() {
             >
                 <View style={styles.headerContent}>
                     <View style={styles.headerTop}>
-                        {/* <IconButton
+                        <IconButton
                             icon="arrow-left"
                             size={24}
                             iconColor="white"
-                            onPress={() => router.push('/(app)/(kabbag-umum)/home')}
+                            onPress={() => router.back()}
                             style={styles.backButton}
-                        /> */}
+                        />
                         <Text style={styles.headerTitle}>Disposisi Laporan</Text>
                         <IconButton
                             icon="history"
@@ -285,6 +287,14 @@ export default function DisposisiScreen() {
                     closeDisposisiModal();
                     loadLaporanDisposisi();
                 }}
+            />
+
+            <Notification
+                visible={notification.visible}
+                message={notification.message}
+                type={notification.type}
+                onDismiss={hideNotification}
+                duration={4000}
             />
         </View>
     );

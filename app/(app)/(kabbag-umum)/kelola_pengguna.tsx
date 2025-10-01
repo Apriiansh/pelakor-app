@@ -23,6 +23,9 @@ import {
     HelperText,
     TouchableRipple,
 } from 'react-native-paper';
+import { Notification } from '@/components/Notification';
+import { useNotification } from '@/hooks/use-notification';
+
 
 const cleanUnitKerja = (unitKerja: string | undefined | null): string => {
     if (!unitKerja) return '';
@@ -79,6 +82,7 @@ export default function KelolaPenggunaScreen() {
     const router = useRouter();
     const { theme } = useAppTheme();
     const styles = createStyles(theme);
+    const { notification, showSuccess, showError, hideNotification } = useNotification();
 
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
@@ -87,7 +91,6 @@ export default function KelolaPenggunaScreen() {
     const [modalVisible, setModalVisible] = useState(false);
     const [isEditMode, setIsEditMode] = useState(false);
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
-    const [snackbar, setSnackbar] = useState({ visible: false, message: '' });
     const [unitKerjaModalVisible, setUnitKerjaModalVisible] = useState(false);
     const [roleModalVisible, setRoleModalVisible] = useState(false);
     const [unitKerjaSearch, setUnitKerjaSearch] = useState('');
@@ -112,7 +115,7 @@ export default function KelolaPenggunaScreen() {
             setUsers(data);
         } catch (error) {
             const message = error instanceof ApiError ? error.message : 'Gagal memuat pengguna';
-            setSnackbar({ visible: true, message });
+            showError(message);
         } finally {
             setLoading(false);
         }
@@ -180,11 +183,11 @@ export default function KelolaPenggunaScreen() {
                     text: "Hapus", style: "destructive", onPress: async () => {
                         try {
                             await deleteUser(user.nip);
-                            setSnackbar({ visible: true, message: 'Pengguna berhasil dihapus' });
+                            showSuccess('Pengguna berhasil dihapus');
                             fetchUsers();
                         } catch (error) {
                             const message = error instanceof ApiError ? error.message : 'Gagal menghapus pengguna';
-                            setSnackbar({ visible: true, message });
+                            showError(message);
                         }
                     }
                 }
@@ -219,16 +222,13 @@ export default function KelolaPenggunaScreen() {
 
     const handleSave = async () => {
         if (!validateForm(formData)) {
-            // Cari error pertama dan tampilkan di snackbar untuk ringkasan
             const firstErrorKey = Object.keys(formErrors)[0];
             const firstErrorMessage = formErrors[firstErrorKey];
-            
             let snackbarMessage = 'Harap perbaiki semua error pada form.';
             if (firstErrorMessage) {
                 snackbarMessage = `Error: ${firstErrorMessage}`;
             }
-
-            setSnackbar({ visible: true, message: snackbarMessage });
+            showError(snackbarMessage);
             return;
         }
 
@@ -248,21 +248,15 @@ export default function KelolaPenggunaScreen() {
         setSaving(true);
         try {
             if (isEditMode && selectedUser) {
-                // Destructure to separate nip, and create a payload without it for the body.
-                // The nip is sent in the URL.
                 const { nip, ...updatePayload } = userData; 
                 await updateUser(selectedUser.nip, updatePayload);
-                setSnackbar({ visible: true, message: 'Pengguna berhasil diperbarui' });
+                showSuccess('Pengguna berhasil diperbarui');
             } else {
-                // Ensure the full userData object, which includes the password, is sent.
-                // The 'as any' cast can hide type errors, so let's be explicit.
-                // The createUser function expects all fields including password for a new user.
-                // We can assert that userData has a password because of the validation above.
                 if (!userData.password) {
                     throw new Error("Password is required for new user.");
                 }
                 await createUser(userData as User & { password: string });
-                setSnackbar({ visible: true, message: 'Pengguna berhasil ditambahkan' });
+                showSuccess('Pengguna berhasil ditambahkan');
             }
             hideModal();
             fetchUsers();
@@ -280,7 +274,7 @@ export default function KelolaPenggunaScreen() {
                 }
             }
 
-            setSnackbar({ visible: true, message });
+            showError(message);
         } finally {
             setSaving(false);
         }
@@ -574,13 +568,13 @@ export default function KelolaPenggunaScreen() {
                     </Modal>
                 </Portal>
 
-                <Snackbar
-                    visible={snackbar.visible}
-                    onDismiss={() => setSnackbar({ ...snackbar, visible: false })}
+                <Notification
+                    visible={notification.visible}
+                    message={notification.message}
+                    type={notification.type}
+                    onDismiss={hideNotification}
                     duration={4000}
-                >
-                    {snackbar.message}
-                </Snackbar>
+                />
             </View>
         </Provider>
     );

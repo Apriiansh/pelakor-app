@@ -142,7 +142,7 @@ export function TindakLanjutDialog({ visible, onDismiss, laporan, onSuccess }: T
             return;
         }
         const result = await ImagePicker.launchCameraAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            mediaTypes: 'images',
             quality: 0.8,
             allowsEditing: true
         });

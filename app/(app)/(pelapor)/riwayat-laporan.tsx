@@ -24,6 +24,9 @@ import type { Laporan, DisposisiHistory, TindakLanjutHistory } from '@/utils/api
 import { DetailLaporanDialog } from '@/components/laporan/DetailLaporanDialog';
 import { EditLaporanDialog } from '@/components/laporan/EditLaporanDialog';
 
+import { Notification } from '@/components/Notification';
+import { useNotification } from '@/hooks/use-notification';
+
 interface SnackbarState {
     visible: boolean;
     message: string;
@@ -35,6 +38,7 @@ type StatusFilter = 'semua' | 'diajukan' | 'diproses' | 'ditolak' | 'ditindaklan
 export default function RiwayatLaporanScreen(): JSX.Element {
     const { theme } = useAppTheme();
     const router = useRouter();
+    
 
     const [laporanList, setLaporanList] = useState<Laporan[]>([]);
     const [selectedLaporan, setSelectedLaporan] = useState<Laporan | null>(null);
@@ -51,8 +55,8 @@ export default function RiwayatLaporanScreen(): JSX.Element {
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState<StatusFilter>('semua');
 
-    const [snackbar, setSnackbar] = useState<SnackbarState>({ visible: false, message: '' });
-
+    const { notification, showSuccess, showError, showWarning, hideNotification } = useNotification();
+    
     const statusOptions: Array<{ value: StatusFilter; label: string; color: string }> = [
         { value: 'semua', label: 'Semua Status', color: theme.colors.outline },
         { value: 'diajukan', label: 'Diajukan', color: theme.colors.primary },
@@ -77,8 +81,7 @@ export default function RiwayatLaporanScreen(): JSX.Element {
             setLaporanList(data);
         } catch (error) {
             const errorMessage = error instanceof api.ApiError ? error.message : 'Gagal memuat riwayat laporan.';
-            setSnackbar({ visible: true, message: errorMessage, type: 'error' });
-            console.error('Error fetching laporan:', error);
+            showError(errorMessage);
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -151,7 +154,7 @@ export default function RiwayatLaporanScreen(): JSX.Element {
 
     const openEdit = useCallback((laporan: Laporan) => {
         if (laporan.status_laporan !== 'diajukan') {
-            showAppAlert('Tidak Dapat Mengedit', 'Laporan hanya dapat diedit jika status masih "Diajukan".');
+            showWarning('Laporan hanya dapat diedit jika status masih "Diajukan".'); 
             return;
         }
         setDetailVisible(false);
@@ -175,7 +178,7 @@ export default function RiwayatLaporanScreen(): JSX.Element {
             // `partialUpdate` kemungkinan tidak memiliki semua field, misal: id_laporan, status_laporan
             const partialUpdate = await api.updateLaporan(selectedLaporan.id_laporan.toString(), updateData);
 
-            setSnackbar({ visible: true, message: 'Laporan berhasil diperbarui', type: 'success' });
+            showSuccess('Laporan berhasil diperbarui');
 
             // Gabungkan data lama dengan data baru untuk mendapatkan objek yang utuh
             const updatedLaporan = { ...selectedLaporan, ...partialUpdate };
@@ -192,7 +195,7 @@ export default function RiwayatLaporanScreen(): JSX.Element {
 
         } catch (error) {
             const errorMessage = error instanceof api.ApiError ? error.message : 'Gagal memperbarui laporan';
-            setSnackbar({ visible: true, message: errorMessage, type: 'error' });
+            showError(errorMessage)
             console.error('Error updating laporan:', error);
         } finally {
             setSubmittingEdit(false);
@@ -208,12 +211,12 @@ export default function RiwayatLaporanScreen(): JSX.Element {
         const onConfirmDelete = async () => {
             try {
                 await api.deleteLaporan(laporan.id_laporan.toString());
-                setSnackbar({ visible: true, message: 'Laporan berhasil dihapus', type: 'success' });
+                showSuccess('Laporan berhasil dihapus');
                 closeDetail();
                 onRefresh();
             } catch (error) {
                 const errorMessage = error instanceof api.ApiError ? error.message : 'Gagal menghapus laporan';
-                setSnackbar({ visible: true, message: errorMessage, type: 'error' });
+                showError(errorMessage);
             }
         };
 
@@ -405,18 +408,13 @@ export default function RiwayatLaporanScreen(): JSX.Element {
                 />
             )}
 
-            <Snackbar
-                visible={snackbar.visible}
-                onDismiss={() => setSnackbar(prev => ({ ...prev, visible: false }))}
+            <Notification
+                visible={notification.visible}
+                message={notification.message}
+                type={notification.type}
+                onDismiss={hideNotification}
                 duration={4000}
-                style={[
-                    styles.snackbar,
-                    snackbar.type === 'error' && { backgroundColor: theme.colors.errorContainer },
-                    snackbar.type === 'success' && { backgroundColor: theme.colors.primaryContainer },
-                ]}
-            >
-                {snackbar.message}
-            </Snackbar>
+            />
         </View>
     );
 }

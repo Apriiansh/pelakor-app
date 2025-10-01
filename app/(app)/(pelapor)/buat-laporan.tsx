@@ -7,6 +7,8 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAppTheme } from '@/context/ThemeContext';
+import { Notification } from '@/components/Notification';
+import { useNotification } from '@/hooks/use-notification';
 
 const { width } = Dimensions.get('window');
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
@@ -15,6 +17,8 @@ export default function BuatLaporanScreen() {
     const router = useRouter();
     const params = useLocalSearchParams();
     const { theme } = useAppTheme();
+
+    const { notification, showSuccess, showError, showWarning, hideNotification } = useNotification();
 
     const [judul_laporan, setJudul] = useState('');
     const [isi_laporan, setDeskripsi] = useState('');
@@ -38,17 +42,20 @@ export default function BuatLaporanScreen() {
         }
     }, [params]);
 
-    const showAppAlert = (title: string, message: string) => {
-        if (Platform.OS === 'web') {
-            alert(`${title}\n\n${message}`);
-        } else {
-            Alert.alert(title, message);
-        }
+    const formatBytes = (bytes: number, decimals = 2) => {
+        if (!+bytes) return '0 Bytes';
+
+        const k = 1024;
+        const dm = decimals < 0 ? 0 : decimals;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+        return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
     }
 
     const pickFile = async () => {
         try {
-            // Menggabungkan pemilihan gambar dan dokumen
             const result = await DocumentPicker.getDocumentAsync({
                 type: [
                     'image/*',
@@ -60,42 +67,47 @@ export default function BuatLaporanScreen() {
             });
             if (!result.canceled) {
                 setLampiran(result.assets[0]);
+                showSuccess('File berhasil dipilih!');
             }
         } catch (error) {
             console.error('Error picking file:', error);
-            showAppAlert('Error', 'Gagal memilih file.');
+            showError('Gagal memilih file.');
         }
     };
 
     const pickCamera = async () => {
         if (Platform.OS === 'web') {
-            showAppAlert('Info', 'Fitur kamera tidak tersedia di web. Silakan upload file.');
+            showWarning('Fitur kamera tidak tersedia di web. Silakan upload file.');
             return;
         }
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
         if (status !== 'granted') {
-            showAppAlert('Izin ditolak', 'Akses kamera dibutuhkan untuk ambil foto.');
+            showError('Akses kamera dibutuhkan untuk ambil foto.');
             return;
         }
         const result = await ImagePicker.launchCameraAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            mediaTypes: 'images',
             quality: 0.8,
             allowsEditing: true
         });
         if (!result.canceled) {
             setLampiran(result.assets[0]);
+            showSuccess('Foto berhasil diambil!');
         }
     };
 
-    const clearLampiran = () => setLampiran(null);
+    const clearLampiran = () => {
+        setLampiran(null);
+        showSuccess('Lampiran dihapus');
+    };
 
     const handleSubmit = async () => {
         if (!judul_laporan.trim() || !isi_laporan.trim()) {
-            showAppAlert('Validasi Error', 'Judul dan Deskripsi wajib diisi');
+            showWarning('Judul dan Deskripsi wajib diisi');
             return;
         }
         if (!kategori) {
-            showAppAlert('Validasi Error', 'Pilih kategori laporan');
+            showWarning('Pilih kategori laporan');
             return;
         }
 
@@ -103,7 +115,7 @@ export default function BuatLaporanScreen() {
         try {
             const token = await AsyncStorage.getItem('userToken');
             if (!token) {
-                showAppAlert('Error', 'Anda belum login');
+                showError('Anda belum login');
                 setLoading(false);
                 return;
             }
@@ -114,18 +126,19 @@ export default function BuatLaporanScreen() {
             formData.append('kategori', kategori);
 
             if (lampiran) {
+                const fileUri = lampiran.uri;
+                const fileName = lampiran.name || lampiran.fileName || fileUri.split('/').pop();
+                const fileType = lampiran.mimeType || lampiran.type || 'image/jpeg';
+
                 if (Platform.OS === 'web') {
-                    if (lampiran.uri) {
-                        const response = await fetch(lampiran.uri);
-                        const blob = await response.blob();
-                        const filename = lampiran.name || 'lampiran.jpg';
-                        formData.append('lampiran', blob, filename);
-                    }
+                    const response = await fetch(fileUri);
+                    const blob = await response.blob();
+                    formData.append('lampiran', blob, fileName);
                 } else {
                     formData.append('lampiran', {
-                        uri: lampiran.uri,
-                        name: lampiran.name || `lampiran.${lampiran.mimeType?.split('/')[1] || 'jpg'}`,
-                        type: lampiran.mimeType || 'image/jpeg'
+                        uri: fileUri,
+                        name: fileName,
+                        type: fileType
                     } as any);
                 }
             }
@@ -143,36 +156,20 @@ export default function BuatLaporanScreen() {
                 throw new Error(data.message || 'Gagal membuat laporan');
             }
 
-            const handleSuccess = () => {
+            showSuccess('Laporan berhasil dikirim!');
+
+            // Delay untuk menampilkan notifikasi sebelum kembali
+            setTimeout(() => {
                 setJudul('');
                 setDeskripsi('');
                 setKategori('');
                 setLampiran(null);
                 router.back();
-            };
+            }, 1500);
 
-            if (Platform.OS === 'web') {
-                alert('Laporan Berhasil Dibuat! ✅\n\nLaporan Anda telah diterima dan akan segera diproses oleh tim terkait.');
-                handleSuccess();
-            } else {
-                Alert.alert(
-                    'Laporan Berhasil Dibuat! ✅',
-                    'Laporan Anda telah diterima dan akan segera diproses oleh tim terkait.',
-                    [
-                        {
-                            text: 'OK',
-                            onPress: handleSuccess
-                        }
-                    ]
-                );
-            }
         } catch (err: any) {
             console.error(err);
-            if (Platform.OS === 'web') {
-                alert('Error: ' + (err.message || 'Terjadi kesalahan saat mengirim laporan'));
-            } else {
-                Alert.alert('Error', err.message || 'Terjadi kesalahan saat mengirim laporan');
-            }
+            showError(err.message || 'Terjadi kesalahan saat mengirim laporan');
         } finally {
             setLoading(false);
         }
@@ -181,7 +178,7 @@ export default function BuatLaporanScreen() {
     const getCategoryLabel = (value: string) => {
         return categories.find(cat => cat.value === value)?.label || value;
     };
-    
+
     const styles = StyleSheet.create({
         container: {
             flex: 1,
@@ -219,7 +216,7 @@ export default function BuatLaporanScreen() {
             color: 'rgba(255, 255, 255, 0.8)',
             textAlign: 'center',
         },
-    
+
         scrollView: {
             flex: 1,
         },
@@ -228,7 +225,7 @@ export default function BuatLaporanScreen() {
             paddingTop: 16,
             paddingBottom: 100,
         },
-    
+
         formCard: {
             backgroundColor: theme.colors.surface,
             borderRadius: 16,
@@ -237,7 +234,7 @@ export default function BuatLaporanScreen() {
         formContent: {
             padding: 20,
         },
-    
+
         inputGroup: {
             marginBottom: 24,
         },
@@ -265,7 +262,7 @@ export default function BuatLaporanScreen() {
             textAlign: 'right',
             marginTop: 4,
         },
-    
+
         categorySelector: {
             borderWidth: 1,
             borderColor: theme.colors.outline,
@@ -316,7 +313,7 @@ export default function BuatLaporanScreen() {
             fontWeight: '500',
             color: theme.colors.onSurfaceVariant,
         },
-    
+
         attachmentPreview: {
             backgroundColor: theme.colors.primaryContainer,
             borderRadius: 12,
@@ -359,7 +356,7 @@ export default function BuatLaporanScreen() {
             fontSize: 12,
             color: theme.colors.onSurfaceVariant,
         },
-    
+
         submitCard: {
             backgroundColor: theme.colors.surface,
             borderRadius: 16,
@@ -386,7 +383,7 @@ export default function BuatLaporanScreen() {
             textAlign: 'center',
             marginTop: 12,
         },
-    
+
         // Modal styles
         modalContent: {
             backgroundColor: theme.colors.surface,
@@ -562,7 +559,7 @@ export default function BuatLaporanScreen() {
                                 <Card style={styles.attachmentPreview} elevation={1}>
                                     <Card.Content style={styles.attachmentPreviewContent}>
                                         <View style={styles.attachmentInfo}>
-                                            {lampiran.mimeType?.startsWith('image') ? (
+                                            {(lampiran.mimeType?.startsWith('image') || lampiran.type === 'image') ? (
                                                 <Image
                                                     source={{ uri: lampiran.uri }}
                                                     style={styles.attachmentImage}
@@ -579,10 +576,10 @@ export default function BuatLaporanScreen() {
                                             )}
                                             <View style={styles.attachmentDetails}>
                                                 <Text style={styles.attachmentName} numberOfLines={1}>
-                                                    {lampiran.name}
+                                                    {lampiran.name || lampiran.fileName}
                                                 </Text>
                                                 <Text style={styles.attachmentSize}>
-                                                    {lampiran.size ? `${(lampiran.size / 1024 / 1024).toFixed(2)} MB` : 'Unknown size'}
+                                                    {formatBytes(lampiran.size || lampiran.fileSize)}
                                                 </Text>
                                             </View>
                                         </View>
@@ -666,6 +663,15 @@ export default function BuatLaporanScreen() {
                     </ScrollView>
                 </Modal>
             </Portal>
+
+            {/* Notification Component - TAMBAHKAN INI */}
+            <Notification
+                visible={notification.visible}
+                message={notification.message}
+                type={notification.type}
+                onDismiss={hideNotification}
+                duration={4000}
+            />
         </View>
     );
 }

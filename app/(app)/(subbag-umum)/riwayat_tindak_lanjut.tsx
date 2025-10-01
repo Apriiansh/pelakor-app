@@ -18,6 +18,9 @@ import type { Laporan, DisposisiHistory, TindakLanjutHistory } from '@/utils/api
 
 import { DetailDisposisiDialog } from '@/components/laporan/DetailRiwayatDisposisi';
 
+import { Notification } from '@/components/Notification';
+import { useNotification } from '@/hooks/use-notification';
+
 export default function RiwayatTindakLanjutScreen(): JSX.Element {
     const { theme } = useAppTheme();
     const router = useRouter();
@@ -33,6 +36,8 @@ export default function RiwayatTindakLanjutScreen(): JSX.Element {
     const [isDetailVisible, setDetailVisible] = useState(false);
     const [loadingDetail, setLoadingDetail] = useState(false);
 
+    const { notification, showSuccess, showError, hideNotification } = useNotification();
+
     const [searchQuery, setSearchQuery] = useState('');
 
     const fetchRiwayat = useCallback(async (): Promise<void> => {
@@ -47,12 +52,12 @@ export default function RiwayatTindakLanjutScreen(): JSX.Element {
         } catch (error) {
             const errorMessage = error instanceof api.ApiError ? error.message : 'Gagal memuat riwayat tindak lanjut.';
             console.error('Error fetching riwayat:', error);
-            // You can add a snackbar here if you have one
+            showError(errorMessage);
         } finally {
             setLoading(false);
             setRefreshing(false);
         }
-    }, []);
+    }, [showError]);
 
     useEffect(() => {
         fetchRiwayat();
@@ -218,6 +223,14 @@ export default function RiwayatTindakLanjutScreen(): JSX.Element {
                     formatDate={formatDate}
                 />
             )}
+
+            <Notification
+                visible={notification.visible}
+                message={notification.message}
+                type={notification.type}
+                onDismiss={hideNotification}
+                duration={4000}
+            />
         </View>
     );
 }
