@@ -38,10 +38,10 @@ export default function RiwayatTindakLanjutScreen(): JSX.Element {
     const fetchRiwayat = useCallback(async (): Promise<void> => {
         try {
             setLoading(true);
-            // Fetches all reports relevant to the user, then we filter for completed ones.
-            const data = await api.getLaporan(); 
+            // Fetches all reports relevant to the user, then we filter for completed or rejected ones.
+            const data = await api.getLaporan();
             const historyLaporan = data.filter(
-                (l: Laporan) => l.status_laporan === 'selesai'
+                (l: Laporan) => l.status_laporan === 'selesai' || l.status_laporan === 'ditolak'
             );
             setLaporanList(historyLaporan);
         } catch (error) {
@@ -78,6 +78,7 @@ export default function RiwayatTindakLanjutScreen(): JSX.Element {
 
     const getStatusColor = useCallback((status: string): string => {
         if (status === 'selesai') return '#4CAF50';
+        if (status === 'ditolak') return theme.colors.error;
         return theme.colors.outline;
     }, [theme.colors]);
 
@@ -126,7 +127,7 @@ export default function RiwayatTindakLanjutScreen(): JSX.Element {
                         <Chip
                             {...props}
                             mode="flat"
-                            icon="check-circle"
+                            icon={item.status_laporan === 'selesai' ? 'check-circle' : 'close-circle'}
                             style={[styles.statusChip, { backgroundColor: `${getStatusColor(item.status_laporan)}15` }]}
                             textStyle={{ color: getStatusColor(item.status_laporan), fontSize: 11, fontFamily: 'RubikMedium' }}
                         >

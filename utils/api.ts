@@ -322,26 +322,41 @@ export const getTindakLanjut = () => {
  * POST /api/tindaklanjut/:laporan_id
  * Tambahkan catatan tindak lanjut dengan lampiran opsional
  */
-export const postTindakLanjut = (laporan_id: string, data: {
-    catatan_tindak_lanjut?: string;
-    status?: string;
-    lampiran?: File | null;
+export const postTindakLanjut = async (laporan_id: string, data: {
+    catatan_tindak_lanjut: string;
+    status: string;
+    lampiran?: any;
 }) => {
-    const formData = new FormData();
-    if (data.catatan_tindak_lanjut) {
-        formData.append('catatan_tindak_lanjut', data.catatan_tindak_lanjut);
-    }
-    if (data.status) {
-        formData.append('status', data.status);
-    }
-    if (data.lampiran) {
-        formData.append('lampiran', data.lampiran);
+    const token = await AsyncStorage.getItem('userToken');
+    if (!token) {
+        throw new ApiError('Token tidak ditemukan. Silakan login kembali.', 401);
     }
 
-    return apiFetch(`/api/tindaklanjut/${laporan_id}`, {
+    const formData = new FormData();
+    formData.append('catatan_tindak_lanjut', data.catatan_tindak_lanjut);
+    formData.append('status', data.status);
+
+    if (data.lampiran) {
+        formData.append('lampiran', data.lampiran as any);
+    }
+
+    const API_URL = process.env.EXPO_PUBLIC_API_URL;
+    const response = await fetch(`${API_URL}/api/tindaklanjut/${laporan_id}`, {
         method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            // Jangan set Content-Type, biarkan browser/React Native yang set untuk multipart/form-data
+        },
         body: formData,
     });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+        throw new ApiError(result.message || 'Gagal menyimpan tindak lanjut', response.status);
+    }
+
+    return result;
 };
 
 /**

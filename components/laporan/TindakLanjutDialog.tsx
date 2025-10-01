@@ -185,44 +185,33 @@ export function TindakLanjutDialog({ visible, onDismiss, laporan, onSuccess }: T
 
         setLoading(true);
         try {
-            const token = await AsyncStorage.getItem('userToken');
-            if (!token) {
-                showAppAlert('Error', 'Autentikasi gagal. Silakan login kembali.');
-                setLoading(false);
-                return;
-            }
+            // Siapkan data untuk API
+            const submitData: {
+                catatan_tindak_lanjut: string;
+                status: string;
+                lampiran?: any;
+            } = {
+                catatan_tindak_lanjut: catatan.trim(),
+                status: statusTindakLanjut,
+            };
 
-            const formData = new FormData();
-            formData.append('catatan_tindak_lanjut', catatan.trim());
-            formData.append('status', statusTindakLanjut);
-
+            // Tambahkan lampiran jika ada
             if (lampiran && lampiran.uri) {
-                formData.append('lampiran', {
+                submitData.lampiran = {
                     uri: lampiran.uri,
                     name: getLampiranName(),
                     type: lampiran.mimeType || 'application/octet-stream',
-                } as any);
+                };
             }
 
-            const API_URL = process.env.EXPO_PUBLIC_API_URL;
-            const response = await fetch(`${API_URL}/api/tindaklanjut/${laporan.id_laporan}`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                },
-                body: formData,
-            });
-
-            const data = await response.json();
-            if (!response.ok) {
-                throw new Error(data.message || 'Gagal menyimpan tindak lanjut');
-            }
+            // Panggil API menggunakan utility function
+            await postTindakLanjut(String(laporan.id_laporan), submitData);
 
             const statusLabel = statusOptions.find(s => s.value === statusTindakLanjut)?.label || 'Diupdate';
 
             showAppAlert(
                 'Tindak Lanjut Berhasil! ✅',
-                `Status laporan telah diubah menjadi "${statusLabel}"`, // Corrected escaping for double quotes
+                `Status laporan telah diubah menjadi "${statusLabel}"`,
                 [
                     {
                         text: 'OK',
@@ -235,7 +224,10 @@ export function TindakLanjutDialog({ visible, onDismiss, laporan, onSuccess }: T
             );
         } catch (err: any) {
             console.error('Error tindak lanjut:', err);
-            showAppAlert('Error', err.message || 'Terjadi kesalahan saat menyimpan tindak lanjut');
+            const errorMessage = err instanceof ApiError
+                ? err.message
+                : err.message || 'Terjadi kesalahan saat menyimpan tindak lanjut';
+            showAppAlert('Error', errorMessage);
         } finally {
             setLoading(false);
         }
